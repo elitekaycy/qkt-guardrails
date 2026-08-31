@@ -1,0 +1,13 @@
+# Attach the guardian to an existing mt5-gateway compose stack.
+services:
+  guardian:
+    image: python:3.12-alpine
+    restart: unless-stopped
+    command: ["python", "-u", "/app/guardian.py"]
+    env_file: .env
+    volumes:
+      - ./guardian:/app:ro
+      - ./guardian-state:/state
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
