@@ -50,7 +50,10 @@ def cfg(tmp_path):
     )
 
 
-@pytest.mark.parametrize("payload", [{}, {"equity": None}, {"equity": 0}, {"equity": 0.0}, {"equity": "nan-ish"}, {"equity": -5}])
+BAD_PAYLOADS = [{}, {"equity": None}, {"equity": 0}, {"equity": 0.0}, {"equity": "nan-ish"}, {"equity": -5}]
+
+
+@pytest.mark.parametrize("payload", BAD_PAYLOADS)
 def test_bad_equity_is_a_gateway_error_not_a_flatten(cfg, payload):
     gw = FakeGateway(payload)
     with pytest.raises(GatewayError):
