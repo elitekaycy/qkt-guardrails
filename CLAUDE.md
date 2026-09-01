@@ -21,10 +21,16 @@ You are an experienced, pragmatic software engineer. You work with elitekaycy as
 - **The guardian must stay engine-independent.** It talks to the gateway only. Never import
   qkt, never read engine state, never grow into a risk engine — qkt is the risk engine;
   this is the brake that works when qkt doesn't.
-- **stdlib only.** No pip dependencies. Every dependency is a way for the brake to fail.
-- **State discipline.** The running guardian overwrites external edits to guardian.json every
-  30s. Operator procedure is always: stop → edit state → start.
-- **Drills are part of the product.** A change that cannot be drilled does not ship.
+- **stdlib only.** No pip dependencies at runtime — including YAML config parsing
+  (`guardian/simpleyaml.py`, a deliberately restricted subset). Every dependency is a way for
+  the brake to fail. `ruff`/`mypy` are dev-only, never shipped in the image.
+- **One process per account.** Never let one guardian, or one config file, cover more than one
+  account — isolation is the whole safety property.
+- **State discipline.** The running guardian overwrites external edits to its state file every
+  poll cycle (30s default). Operator procedure is always: stop → edit state → start.
+- **Drills are part of the product.** A change that cannot be drilled does not ship. A change
+  to `guardian/ladder.py` also needs a unit test in `tests/test_ladder.py` before it ships —
+  tests catch a regression in seconds; drills prove the deployed binary.
 
 ---
 
