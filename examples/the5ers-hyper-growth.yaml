@@ -1,0 +1,25 @@
+# The5ers "Hyper Growth" preset: sized inside the firm's daily/total rules.
+#
+# Copy to configs/<account-name>.yaml and edit target/account below directly
+# (they aren't secrets). The one field that stays out of the file is the API
+# key — give it a var name unique to this account (so multiple accounts can
+# share one .env without colliding) and set it there.
+target:
+  name: CHANGE_ME               # matches the qkt-insights instance_id, if any
+  gateway_url: http://mt5-gateway:5001
+  api_key: ${GUARDIAN_CHANGE_ME_API_KEY}
+
+account:
+  initial_balance: 20000
+
+ladder:
+  soft_pct: 1.5
+  hard_pct: 2.2
+  static_pct: 4
+  roll_utc_hour: 21
+
+# Optional Telegram alerts on every engage/release — uncomment and set
+# TG_TOKEN/TG_CHAT in .env if you want them; omit the whole section otherwise.
+# notify:
+#   telegram_token: ${TG_TOKEN}
+#   telegram_chat: ${TG_CHAT}

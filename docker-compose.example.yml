@@ -1,13 +1,19 @@
-# Attach the guardian to an existing mt5-gateway compose stack.
+# One guardian container per account — isolation on purpose: a hang or bug
+# watching one account must never delay the kill decision for another.
+# Copy an examples/*.yaml preset into configs/<account-name>.yaml per account,
+# add a service block below per config, and set its API key (and, if used,
+# TG_TOKEN/TG_CHAT) in .env.
 services:
-  guardian:
-    image: python:3.12-alpine
+  guardian-bot2-forward-bench:
+    image: ghcr.io/elitekaycy/qkt-guardrails:latest
     restart: unless-stopped
-    command: ["python", "-u", "/app/guardian.py"]
     env_file: .env
     volumes:
-      - ./guardian:/app:ro
-      - ./guardian-state:/state
+      - ./configs/bot2-forward-bench.yaml:/config/guardian.yaml:ro
+      - guardian-state-bot2-forward-bench:/state
     logging:
       driver: json-file
       options: { max-size: "5m", max-file: "3" }
+
+volumes:
+  guardian-state-bot2-forward-bench:
