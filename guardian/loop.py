@@ -45,7 +45,16 @@ def run_once(
     now = dt.datetime.now(dt.UTC)
     account = gateway.account()
     raw_equity = account.get("equity")
-    equity = float(raw_equity) if isinstance(raw_equity, (int, float, str)) else 0.0
+    # A payload without a positive numeric equity is DATA, not a drawdown: 0.0
+    # would read as "below the static floor" and flatten the whole book on a
+    # telemetry glitch. On valid data the STATIC rung engages long before
+    # equity could approach zero, so nothing real is lost by refusing here.
+    try:
+        equity = float(raw_equity)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        raise GatewayError(f"account payload without numeric equity: {raw_equity!r}") from None
+    if equity <= 0:
+        raise GatewayError(f"account payload with non-positive equity: {equity!r}")
 
     state, decision = evaluate(state, cfg.ladder, cfg.account.initial_balance, now, equity, news.events())
 
