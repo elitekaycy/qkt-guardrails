@@ -23,3 +23,12 @@ logic or thresholds. All verified live 2026-08-31 on a demo account.
    no crash, no stale kill state.
 
 Rule of thumb: if you cannot show a log line proving a layer fired, that layer does not exist.
+
+## Executions on record
+- 2026-08-31 — single-file guardian, live prop deployment (Exness demo stand-in).
+- 2026-09-01 — THIS PACKAGE, v post-#3, against a live local demo (botverify) under the
+  shared-account lock: startup/no-op, SOFT (position survived), HARD (package flattened a real
+  0.01 position), release, STATIC (lock survived a restart; operator clear procedure), manual-kill
+  respect (2 cycles, untouched), dead-gateway outage (loop survived), teardown flat. Cost: one
+  0.01 round trip (~$0.50 spread). The package is drill-validated and eligible to replace the
+  single-file deployment at the next maintenance window.
