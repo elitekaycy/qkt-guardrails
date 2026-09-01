@@ -103,7 +103,7 @@ def evaluate(
         state.lock = "daily"
     elif day_dd_pct >= cfg.soft_pct:
         want_kill, reason = True, "DAILY-SOFT"
-    elif is_friday_flat_window(now, cfg.fri_flat_utc):
+    elif cfg.friday_flat and is_friday_flat_window(now, cfg.fri_flat_utc):
         want_kill, reason = True, "WEEKEND"
         anchor = day_anchor(now, cfg.roll_utc_hour)
         if now.weekday() == 4 and state.fri_flat != anchor:

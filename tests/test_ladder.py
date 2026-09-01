@@ -42,6 +42,23 @@ class FridayWindowTest(unittest.TestCase):
         self.assertFalse(is_friday_flat_window(at("2026-06-08T23:00:00"), fri_flat_utc=20))
 
 
+class FridayFlatToggleTest(unittest.TestCase):
+    def test_disabled_friday_flat_wants_no_kill_in_the_window(self) -> None:
+        cfg = LadderConfig(friday_flat=False)
+        state = GuardianState(day="2026-09-03", prev_close=50000.0, equity_now=50000.0)
+        friday_evening = dt.datetime(2026, 9, 4, 21, 30, tzinfo=dt.UTC)
+        state, decision = evaluate(state, cfg, 50000.0, friday_evening, 50000.0, None)
+        self.assertFalse(decision.want_kill)
+
+    def test_default_friday_flat_still_kills_in_the_window(self) -> None:
+        cfg = LadderConfig()
+        state = GuardianState(day="2026-09-03", prev_close=50000.0, equity_now=50000.0)
+        friday_evening = dt.datetime(2026, 9, 4, 21, 30, tzinfo=dt.UTC)
+        state, decision = evaluate(state, cfg, 50000.0, friday_evening, 50000.0, None)
+        self.assertTrue(decision.want_kill)
+        self.assertEqual(decision.reason, "WEEKEND")
+
+
 class NewsWindowTest(unittest.TestCase):
     def test_within_pad_minutes_of_an_event_is_in_window(self) -> None:
         now = at("2026-06-01T12:00:00")

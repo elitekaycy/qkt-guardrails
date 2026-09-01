@@ -17,6 +17,12 @@ ladder:
   hard_pct: 3.5
   static_pct: 6
   roll_utc_hour: 21
+  # friday_flat: true (default) closes everything Friday 20:00 UTC and blocks entries
+  # until Sunday 22:10. Evidence for the default (Dukascopy ticks, 2018-2025): gold's
+  # median weekend gap is 0.06% (a fair coin flip), but p99 = 1.23% and the max = 2.49%
+  # (2020-03-13) — and a gap JUMPS venue stops, filling at the reopen. Intraday bracket
+  # books lose ~nothing by being flat; a genuine multi-day swing book may set
+  # friday_flat: false IF sized so a p99 gap fits inside the firm's daily budget.
 
 # Optional Telegram alerts on every engage/release — uncomment and set
 # TG_TOKEN/TG_CHAT in .env if you want them; omit the whole section otherwise.

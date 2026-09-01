@@ -114,6 +114,7 @@ class LadderConfig:
     news_pad_min: int = 5
     news_feed: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     fri_flat_utc: int = 20
+    friday_flat: bool = True
 
     def __post_init__(self) -> None:
         if not (0 < self.soft_pct < self.hard_pct < self.static_pct):
@@ -179,6 +180,7 @@ class GuardianConfig:
             "news_pad_min": int,
             "news_feed": str,
             "fri_flat_utc": int,
+            "friday_flat": bool,
         }
         # _typed_kwargs already validates each value against ladder_types/notify_types/
         # poll_types above at runtime; mypy can't correlate a dict[str, object] unpack
