@@ -9,7 +9,7 @@ from pathlib import Path
 
 from guardian.config import AccountConfig, GuardianConfig, TargetConfig
 from guardian.gateway import GatewayError
-from guardian.loop import run_once
+from guardian.loop import BLIND_AFTER_FAILURES, Sight, run_once
 from guardian.state import GuardianState
 
 
@@ -76,3 +76,34 @@ class BadEquityTest(unittest.TestCase):
             state = run_once(_cfg(tmp), gateway, NoNotify(), NoNews(), GuardianState())
             self.assertEqual(state.equity_now, 50000.0)
             self.assertFalse(gateway.killed)
+
+
+class SightTest(unittest.TestCase):
+    def test_alerts_once_on_the_third_straight_failure(self) -> None:
+        sight = Sight()
+        err = GatewayError("GET /account failed: refused")
+        alerts = [sight.failed(err) for _ in range(BLIND_AFTER_FAILURES + 2)]
+        self.assertEqual([a is not None for a in alerts], [False, False, True, False, False])
+        self.assertIn("BLIND: 3 polls failed", alerts[2] or "")
+        self.assertIn("refused", alerts[2] or "")
+        self.assertTrue(sight.blind)
+
+    def test_single_hiccups_between_successes_stay_quiet(self) -> None:
+        sight = Sight()
+        for _ in range(3):
+            self.assertIsNone(sight.failed(GatewayError("x")))
+            self.assertIsNone(sight.succeeded())
+        self.assertFalse(sight.blind)
+
+    def test_announces_restored_sight_once_with_the_outage_length(self) -> None:
+        sight = Sight()
+        for _ in range(5):
+            sight.failed(GatewayError("x"))
+        self.assertEqual(sight.succeeded(), "sight restored after 5 failed polls")
+        self.assertIsNone(sight.succeeded())
+        self.assertFalse(sight.blind)
+
+    def test_any_exception_counts_as_a_failed_poll(self) -> None:
+        sight = Sight(blind_after=2)
+        self.assertIsNone(sight.failed(ValueError("boom")))
+        self.assertIsNotNone(sight.failed(RuntimeError("boom")))
