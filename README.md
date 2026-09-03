@@ -73,7 +73,9 @@ container reads one YAML config that names *which* gateway/account it watches �
 | FRIDAY | Fri `fri_flat_utc`:00 UTC | kill + flatten; releases Sun 22:10 UTC |
 
 Layers are evaluated top-down; STATIC always wins if triggered, even during a FRIDAY or NEWS
-window. Telegram alerts on every engage/release (optional, `notify:` in config).
+window. Telegram alerts on every engage/release (optional, `notify:` in config), and on the one
+failure the ladder cannot see: three straight failed polls means the guardian is **blind** — it
+is not watching equity at all — so it says so, once, and again when sight returns.
 
 ## Quick start
 

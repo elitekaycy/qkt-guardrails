@@ -19,8 +19,10 @@ logic or thresholds. All verified live 2026-08-31 on a demo account.
    release it (it only releases kills it engaged).
 6. **News feed** — confirm the startup log line `news feed: N high-impact USD/EUR events`;
    403/429 from the feed must back off, never crash the loop.
-7. **Gateway outage** — restart the gateway; guardian logs connection errors and recovers;
-   no crash, no stale kill state.
+7. **Gateway outage** — stop the gateway; on the third failed poll (~90s) expect
+   `BLIND: 3 polls failed` in the log and, with `notify:` set, on Telegram; start the gateway;
+   expect `sight restored after N failed polls`. No crash, no stale kill state, and exactly one
+   alert each way no matter how long the outage.
 
 Rule of thumb: if you cannot show a log line proving a layer fired, that layer does not exist.
 

@@ -12,12 +12,44 @@ from guardian.news import NewsCache
 from guardian.notify import TelegramNotifier
 from guardian.state import GuardianState
 
+# Three straight failed polls, the same window the container healthcheck calls stale.
+BLIND_AFTER_FAILURES = 3
+
+
+class Sight:
+    """Consecutive failed polls. A guardian that cannot read equity is not guarding,
+    and nothing else in the stack can tell: it alerts once when it goes blind and
+    once when it sees again, never on the single hiccups in between."""
+
+    def __init__(self, blind_after: int = BLIND_AFTER_FAILURES) -> None:
+        self._blind_after = blind_after
+        self.failures = 0
+
+    @property
+    def blind(self) -> bool:
+        return self.failures >= self._blind_after
+
+    def failed(self, error: BaseException) -> str | None:
+        self.failures += 1
+        if self.failures != self._blind_after:
+            return None
+        return f"BLIND: {self.failures} polls failed, equity is not being watched. Last: {error}"
+
+    def succeeded(self) -> str | None:
+        was_blind = self.blind
+        failures = self.failures
+        self.failures = 0
+        if not was_blind:
+            return None
+        return f"sight restored after {failures} failed polls"
+
 
 def run_forever(cfg: GuardianConfig) -> None:
     gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key)
     notifier = TelegramNotifier(cfg.notify)
     news = NewsCache(cfg.ladder.news_feed)
     state = GuardianState.load(cfg.state_path)
+    sight = Sight()
 
     log(
         f"guardian[{cfg.target.name}] up: initial={cfg.account.initial_balance} "
@@ -26,12 +58,19 @@ def run_forever(cfg: GuardianConfig) -> None:
     )
 
     while True:
+        alert: str | None = None
         try:
             state = run_once(cfg, gateway, notifier, news, state)
+            alert = sight.succeeded()
         except GatewayError as e:
             log("gateway error:", e)
+            alert = sight.failed(e)
         except Exception as e:  # noqa: BLE001 — a guard loop must never die
             log("loop error:", e)
+            alert = sight.failed(e)
+        if alert:
+            log(f"[{cfg.target.name}]", alert)
+            notifier.send(f"{cfg.target.name}: {alert}")
         time.sleep(cfg.poll.interval_seconds)
 
 
