@@ -56,7 +56,8 @@ container reads one YAML config that names *which* gateway/account it watches â€
   secrets stay in `${VAR}` env references, never in the file.
 - **Crash-safe state.** Atomic writes (`guardian/state.py`), so a container restart never loses
   today's rollover anchor, the static lock, or which kill switch it owns.
-- **Docker-first.** One small `python:3.12-slim` image, non-root user, a `HEALTHCHECK` that
+- **Docker-first.** One small `python:3.12-slim` image, non-root user (uid 10001 â€” `chown -R
+  10001:10001` a bind-mounted state dir), a `HEALTHCHECK` that
   actually checks liveness (state-file freshness, not just "process is running"), pushed to
   GHCR on every tag.
 - **Typed, tested, linted.** `mypy --strict` and `ruff` clean; `guardian/gateway.py`,

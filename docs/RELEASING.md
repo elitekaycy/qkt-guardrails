@@ -42,6 +42,12 @@ guardian:
     - ./guardian-state:/state
 ```
 
+The image runs as uid/gid **10001** (`guardian`). A bind-mounted state directory must be
+writable by it — `chown -R 10001:10001 ./guardian-state` once — or every poll ends in
+`loop error: Permission denied` and the guardian is blind to its own state (it still
+kills, but forgets the day anchor and locks on restart). The smoke test in CI fails on any
+`loop error`, so the image itself can always write its anonymous `/state` volume.
+
 The state file (`/state/guardian.json`) is forward-compatible across versions: unknown keys
 are ignored, missing keys take defaults. Rolling during an engaged kill (weekend, news) is
 safe: the new process re-evaluates the ladder on its first poll and keeps the switch it finds

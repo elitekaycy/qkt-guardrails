@@ -1,5 +1,8 @@
 FROM python:3.12-slim AS runtime
-RUN groupadd -r guardian && useradd -r -g guardian guardian
+# Fixed uid/gid so a bind-mounted state dir can be made writable deterministically:
+#   chown -R 10001:10001 ./guardian-state
+RUN groupadd -r -g 10001 guardian && useradd -r -u 10001 -g guardian guardian \
+    && mkdir -p /state && chown guardian:guardian /state
 WORKDIR /app
 COPY guardian ./guardian
 RUN chown -R guardian:guardian /app

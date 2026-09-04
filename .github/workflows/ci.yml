@@ -77,6 +77,8 @@ jobs:
             api_key: ${CI_TEST_KEY}
           account:
             initial_balance: 10000
+          ladder:
+            friday_flat: false   # the smoke asserts the no-op path whatever day CI runs
           poll:
             interval_seconds: 2
           EOF
@@ -89,14 +91,22 @@ jobs:
           trap 'docker logs qkt-guardrails-ci || true; docker rm -f qkt-guardrails-ci >/dev/null 2>&1 || true' EXIT
 
           for i in $(seq 1 15); do
-            docker logs qkt-guardrails-ci 2>&1 | grep -q "guardian\[ci-smoke\] up" && break
+            docker logs qkt-guardrails-ci 2>&1 | grep -q "guardian\[ci-smoke\] v[0-9.]* up" && break
             sleep 1
           done
-          docker logs qkt-guardrails-ci 2>&1 | grep -q "guardian\[ci-smoke\] up"
-          # give it a poll cycle, then require no crash/traceback in the log
-          sleep 3
+          docker logs qkt-guardrails-ci 2>&1 | grep -q "guardian\[ci-smoke\] v[0-9.]* up"
+          # give it a few poll cycles, then require: still running, no traceback, no loop
+          # error (a loop error here means the image cannot write its own /state volume),
+          # and no kill engaged against a healthy fake account.
+          sleep 5
           docker inspect qkt-guardrails-ci --format '{{.State.Running}}' | grep -q true
-          docker logs qkt-guardrails-ci 2>&1 | grep -qi "traceback" && exit 1 || true
+          log="$(docker logs qkt-guardrails-ci 2>&1)"
+          echo "$log"
+          echo "$log" | grep -qi "traceback" && { echo "::error::traceback in guardian log"; exit 1; }
+          echo "$log" | grep -q "loop error" && { echo "::error::loop error in guardian log"; exit 1; }
+          echo "$log" | grep -q "KILL engaged" && { echo "::error::kill engaged on a healthy account"; exit 1; }
+          echo "$log" | grep -q "BLIND" && { echo "::error::guardian went blind against the fake gateway"; exit 1; }
+          true
 
   docker:
     needs: docker-smoke

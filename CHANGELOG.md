@@ -9,6 +9,10 @@ First release deployed on a live prop account (The5ers High Stakes 50k, bot1), r
 single-file guardian that had run since 2026-08-31.
 
 ### Fixed
+- The image's non-root user could not write the `/state` volume it declares: without a
+  pre-chowned bind mount every poll logged `loop error: Permission denied` and no state was
+  ever saved. `/state` is now created and owned by the fixed uid 10001 in the image, and the
+  CI smoke test fails on any `loop error`.
 - `ladder.friday_flat: false` could not be loaded from YAML: the config loader coerced every
   non-numeric field to text and rejected the boolean, so the only per-book weekend opt-out
   added in #4 was unusable. Booleans are now typed.
