@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import time
 
+from guardian import __version__
 from guardian.config import GuardianConfig
 from guardian.gateway import GatewayClient, GatewayError
 from guardian.ladder import evaluate
@@ -47,14 +48,20 @@ class Sight:
 def run_forever(cfg: GuardianConfig) -> None:
     gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key)
     notifier = TelegramNotifier(cfg.notify)
-    news = NewsCache(cfg.ladder.news_feed)
+    news = NewsCache(cfg.ladder.news_feed, cfg.ladder.news_currency_codes)
     state = GuardianState.load(cfg.state_path)
     sight = Sight()
 
+    weekend = (
+        f"weekend=Fri{cfg.ladder.fri_flat_utc:02d}:00->Sun{cfg.ladder.weekend_release_utc}UTC"
+        if cfg.ladder.friday_flat
+        else "weekend=off"
+    )
     log(
-        f"guardian[{cfg.target.name}] up: initial={cfg.account.initial_balance} "
+        f"guardian[{cfg.target.name}] v{__version__} up: initial={cfg.account.initial_balance} "
         f"soft={cfg.ladder.soft_pct}% hard={cfg.ladder.hard_pct}% static={cfg.ladder.static_pct}% "
-        f"roll={cfg.ladder.roll_utc_hour}UTC pad={cfg.ladder.news_pad_min}m"
+        f"roll={cfg.ladder.roll_utc_hour}UTC pad={cfg.ladder.news_pad_min}m "
+        f"news={','.join(cfg.ladder.news_currency_codes)} {weekend}"
     )
 
     while True:
@@ -80,8 +87,9 @@ def run_once(
     notifier: TelegramNotifier,
     news: NewsCache,
     state: GuardianState,
+    now: dt.datetime | None = None,
 ) -> GuardianState:
-    now = dt.datetime.now(dt.UTC)
+    now = now if now is not None else dt.datetime.now(dt.UTC)
     account = gateway.account()
     raw_equity = account.get("equity")
     # A payload without a positive numeric equity is DATA, not a drawdown: 0.0

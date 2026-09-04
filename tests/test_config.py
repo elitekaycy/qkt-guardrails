@@ -96,3 +96,47 @@ ladder:
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LadderCalendarTest(unittest.TestCase):
+    def setUp(self) -> None:
+        os.environ["TEST_GUARDIAN_API_KEY"] = "k"
+        self.addCleanup(os.environ.pop, "TEST_GUARDIAN_API_KEY", None)
+
+    def _load(self, ladder_yaml: str) -> GuardianConfig:
+        fd, path = tempfile.mkstemp(suffix=".yaml")
+        os.close(fd)
+        Path(path).write_text(
+            "target:\n  name: t\n  gateway_url: http://x\n  api_key: ${TEST_GUARDIAN_API_KEY}\n"
+            "account:\n  initial_balance: 1000\n" + ladder_yaml
+        )
+        self.addCleanup(os.unlink, path)
+        return GuardianConfig.load(path)
+
+    def test_friday_flat_false_is_a_boolean_not_text(self) -> None:
+        # Regression: the loader coerced every non-numeric field to text, so the one
+        # per-book weekend opt-out (#4) could never be turned off from YAML.
+        self.assertFalse(self._load("ladder:\n  friday_flat: false\n").ladder.friday_flat)
+        self.assertTrue(self._load("ladder:\n  friday_flat: true\n").ladder.friday_flat)
+        self.assertTrue(self._load("").ladder.friday_flat)
+
+    def test_friday_flat_rejects_non_boolean_values(self) -> None:
+        with self.assertRaises(ConfigError):
+            self._load("ladder:\n  friday_flat: sometimes\n")
+
+    def test_weekend_release_defaults_and_parses_hhmm(self) -> None:
+        self.assertEqual(self._load("").ladder.weekend_release, (22, 10))
+        cfg = self._load("ladder:\n  weekend_release_utc: \"22:05\"\n")
+        self.assertEqual(cfg.ladder.weekend_release, (22, 5))
+
+    def test_weekend_release_rejects_malformed_times(self) -> None:
+        for bad in ("2210", "25:00", "22:60", "late"):
+            with self.subTest(bad=bad), self.assertRaises(ConfigError):
+                self._load(f"ladder:\n  weekend_release_utc: \"{bad}\"\n")
+
+    def test_news_currencies_default_and_override(self) -> None:
+        self.assertEqual(self._load("").ladder.news_currency_codes, ("USD", "EUR"))
+        cfg = self._load("ladder:\n  news_currencies: \"usd, gbp\"\n")
+        self.assertEqual(cfg.ladder.news_currency_codes, ("USD", "GBP"))
+        with self.assertRaises(ConfigError):
+            self._load("ladder:\n  news_currencies: \", \"\n")

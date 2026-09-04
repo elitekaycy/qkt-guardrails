@@ -17,6 +17,13 @@ ladder:
   hard_pct: 3.5
   static_pct: 6
   roll_utc_hour: 22
+  friday_flat: true
+  fri_flat_utc: 20
+  # Your venue's first tradable Sunday minute (UTC). The5ers reopens 22:10; Exness and
+  # IC Markets ~22:05. A 24/7 (crypto) book sets friday_flat: false on its OWN account --
+  # the kill switch is account-global and cannot spare some symbols.
+  weekend_release_utc: "22:10"
+  news_currencies: "USD,EUR"
 
 # Optional Telegram alerts on every engage/release — uncomment and set
 # TG_TOKEN/TG_CHAT in .env if you want them; omit the whole section otherwise.

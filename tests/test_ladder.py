@@ -41,6 +41,20 @@ class FridayWindowTest(unittest.TestCase):
     def test_monday_is_never_in_window(self) -> None:
         self.assertFalse(is_friday_flat_window(at("2026-06-08T23:00:00"), fri_flat_utc=20))
 
+    def test_release_time_is_configurable_per_venue(self) -> None:
+        sunday_2206 = at("2026-06-07T22:06:00")
+        self.assertTrue(is_friday_flat_window(sunday_2206, fri_flat_utc=20))  # default 22:10
+        self.assertFalse(is_friday_flat_window(sunday_2206, fri_flat_utc=20, release_utc=(22, 5)))
+        late = (23, 30)
+        self.assertTrue(is_friday_flat_window(at("2026-06-07T23:29:00"), fri_flat_utc=20, release_utc=late))
+        self.assertFalse(is_friday_flat_window(at("2026-06-07T23:31:00"), fri_flat_utc=20, release_utc=late))
+
+    def test_evaluate_honours_the_configured_release_time(self) -> None:
+        cfg = LadderConfig(weekend_release_utc="22:05")
+        state = GuardianState(day="2026-06-06", prev_close=10_000.0, equity_now=10_000.0)
+        _, decision = evaluate(state, cfg, 10_000.0, at("2026-06-07T22:06:00"), 10_000.0, None)
+        self.assertFalse(decision.want_kill)
+
 
 class FridayFlatToggleTest(unittest.TestCase):
     def test_disabled_friday_flat_wants_no_kill_in_the_window(self) -> None:

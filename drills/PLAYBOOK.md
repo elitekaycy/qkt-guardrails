@@ -24,6 +24,9 @@ logic or thresholds. All verified live 2026-08-31 on a demo account.
    expect `sight restored after N failed polls`. No crash, no stale kill state, and exactly one
    alert each way no matter how long the outage.
 
+8. **Version** — the first log line after start reads `guardian[<name>] v<X.Y.Z> up:` with the
+   version you meant to deploy. Wrong version = wrong binary; stop.
+
 Rule of thumb: if you cannot show a log line proving a layer fired, that layer does not exist.
 
 ## Executions on record

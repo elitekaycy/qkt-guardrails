@@ -69,11 +69,27 @@ container reads one YAML config that names *which* gateway/account it watches �
 | SOFT | daily equity loss ≥ `soft_pct` of prev-day close | kill switch on — no new orders; open brackets keep managing |
 | HARD | ≥ `hard_pct` | kill + **flatten everything**; auto-clears at the firm's day roll (`roll_utc_hour`) |
 | STATIC | equity ≤ initial − `static_pct`% | kill + flatten, **locked** until an operator clears it |
-| NEWS | ±`news_pad_min` min around high-impact USD/EUR events (ForexFactory feed) | kill on, auto-release after |
-| FRIDAY | Fri `fri_flat_utc`:00 UTC | kill + flatten; releases Sun 22:10 UTC |
+| NEWS | ±`news_pad_min` min around high-impact events for `news_currencies` (default USD,EUR; ForexFactory feed) | kill on, auto-release after |
+| WEEKEND | Fri `fri_flat_utc`:00 UTC, only when `friday_flat: true` | kill + flatten; releases Sun `weekend_release_utc` (default 22:10) |
 
-Layers are evaluated top-down; STATIC always wins if triggered, even during a FRIDAY or NEWS
-window. Telegram alerts on every engage/release (optional, `notify:` in config), and on the one
+Layers are evaluated top-down; STATIC always wins if triggered, even during a WEEKEND or NEWS
+window.
+
+### The WEEKEND rung is a market calendar, not a risk rule
+
+It exists for instruments that **close** over the weekend (FX, metals, indices), where a gap
+jumps venue stops at the reopen. The kill switch is **account-global** — it blocks every new
+order on the account and `flatten` closes every position — so it can never be applied to some
+symbols and not others. That gives one hard rule:
+
+- A book trading **24/7 instruments (crypto)** runs on its **own account** with
+  `friday_flat: false`. Session handling for those symbols belongs to the engine's per-symbol
+  market-data calendar, not to the guardian.
+- Never mix weekend-closing and 24/7 instruments on one guarded account: either the crypto
+  book gets flattened every Friday, or the FX book carries weekend gap risk unguarded.
+- `weekend_release_utc` is your venue's first tradable Sunday minute (Exness/IC Markets
+  reopen ~22:05 UTC, The5ers 22:10). Too early and the engine sees a 423 storm; too late
+  and you miss the open. Telegram alerts on every engage/release (optional, `notify:` in config), and on the one
 failure the ladder cannot see: three straight failed polls means the guardian is **blind** — it
 is not watching equity at all — so it says so, once, and again when sight returns.
 
@@ -110,6 +126,10 @@ ladder:
   hard_pct: 3.5
   static_pct: 6
   roll_utc_hour: 21
+  friday_flat: true              # false for a 24/7 (crypto) book — see "The WEEKEND rung"
+  fri_flat_utc: 20
+  weekend_release_utc: "22:10"   # your venue's first tradable Sunday minute
+  news_currencies: "USD,EUR"
 
 # notify:                        # optional — omit entirely to disable
 #   telegram_token: ${TG_TOKEN}
@@ -145,15 +165,22 @@ Copy one from `examples/` into `configs/<account-name>.yaml` and fill in `target
 ## Development
 
 ```bash
-python3 -m unittest discover -s tests -v   # 40 tests, no gateway or network needed
+python3 -m unittest discover -s tests -v   # 59 tests, no gateway or network needed
 python3 -m ruff check guardian tests
 python3 -m mypy
 docker build -t qkt-guardrails:dev .
 ```
 
+## Releasing and deploying
+
+Deployments pin a **version tag**, never `latest`; the running guardian logs its version on
+startup (`guardian[<name>] v0.2.0 up: ...`) and `python -m guardian --version` prints it. The
+full procedure — version bump, tag, image, drills, roll-out — is in
+[`docs/RELEASING.md`](docs/RELEASING.md); the change log is [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Status
 
 Acceptance-drilled 2026-08-31: live fill + kill/flatten round trip, SOFT/HARD/STATIC threshold
 drills, restart recovery, news feed live. Restructured into a tested package with typed YAML
-config in 2026-09; battle scars and a hardening roadmap will land here as the rehearsal
-accumulates history.
+config in 2026-09. v0.2.0 (2026-09-04) is the first release deployed on the live prop account,
+replacing the single-file guardian; battle scars land in `CHANGELOG.md` as they are paid for.

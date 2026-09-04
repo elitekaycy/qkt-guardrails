@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from guardian import __version__
 from guardian.config import ConfigError, GuardianConfig
 from guardian.loop import run_forever
 
@@ -11,6 +12,7 @@ from guardian.loop import run_forever
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="guardian")
     parser.add_argument("--config", required=True, help="path to this account's guardian YAML config")
+    parser.add_argument("--version", action="version", version=f"qkt-guardrails {__version__}")
     args = parser.parse_args(argv)
 
     try:

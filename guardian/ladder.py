@@ -31,14 +31,24 @@ def day_anchor(now: dt.datetime, roll_utc_hour: int) -> str:
     return d.isoformat()
 
 
-def is_friday_flat_window(now: dt.datetime, fri_flat_utc: int) -> bool:
-    """From Friday `fri_flat_utc`:00 UTC through Sunday 22:10 UTC."""
+def is_friday_flat_window(
+    now: dt.datetime,
+    fri_flat_utc: int,
+    release_utc: tuple[int, int] = (22, 10),
+) -> bool:
+    """From Friday `fri_flat_utc`:00 UTC through Sunday `release_utc` (HH, MM) UTC.
+
+    A market-calendar window for instruments that close over the weekend. It is
+    evaluated only when the book opted in (`ladder.friday_flat`); a 24/7 book
+    (crypto) has no weekend and must not run with it on.
+    """
     if now.weekday() == 4:
         return now.hour >= fri_flat_utc
     if now.weekday() == 5:
         return True
     if now.weekday() == 6:
-        return now.hour < 22 or (now.hour == 22 and now.minute < 10)
+        release_hour, release_minute = release_utc
+        return (now.hour, now.minute) < (release_hour, release_minute)
     return False
 
 
@@ -103,7 +113,7 @@ def evaluate(
         state.lock = "daily"
     elif day_dd_pct >= cfg.soft_pct:
         want_kill, reason = True, "DAILY-SOFT"
-    elif cfg.friday_flat and is_friday_flat_window(now, cfg.fri_flat_utc):
+    elif cfg.friday_flat and is_friday_flat_window(now, cfg.fri_flat_utc, cfg.weekend_release):
         want_kill, reason = True, "WEEKEND"
         anchor = day_anchor(now, cfg.roll_utc_hour)
         if now.weekday() == 4 and state.fri_flat != anchor:

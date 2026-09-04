@@ -5,7 +5,7 @@
 # TG_TOKEN/TG_CHAT) in .env.
 services:
   guardian-bot2-forward-bench:
-    image: ghcr.io/elitekaycy/qkt-guardrails:latest
+    image: ghcr.io/elitekaycy/qkt-guardrails:v0.2.0   # pin a release; never :latest on real money
     restart: unless-stopped
     env_file: .env
     volumes:
