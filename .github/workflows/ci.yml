@@ -157,10 +157,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          notes="$(awk -v v="## ${GITHUB_REF_NAME}" '$0==v{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md)"
+          # The CHANGELOG section for this tag ("## vX.Y.Z — date" up to the next "## ").
+          notes="$(awk -v v="## ${GITHUB_REF_NAME}" 'index($0, v)==1{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md)"
+          image="ghcr.io/${{ github.repository }}:${GITHUB_REF_NAME}"
+          printf '%s\n\nImage: `%s`\n' "${notes:-see CHANGELOG.md}" "$image" > /tmp/notes.md
           gh release create "$GITHUB_REF_NAME" \
             --title "qkt-guardrails $GITHUB_REF_NAME" \
-            --notes "${notes:-see CHANGELOG.md}
-
-Image: ghcr.io/${{ github.repository }}:$GITHUB_REF_NAME" \
+            --notes-file /tmp/notes.md \
             --verify-tag
