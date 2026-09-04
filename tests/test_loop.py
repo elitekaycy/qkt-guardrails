@@ -3,6 +3,7 @@ never as a drawdown. equity 0.0 reads as 'below the static floor' and would
 flatten the whole book on a telemetry glitch."""
 from __future__ import annotations
 
+import datetime as dt
 import tempfile
 import unittest
 from pathlib import Path
@@ -73,9 +74,19 @@ class BadEquityTest(unittest.TestCase):
     def test_valid_equity_still_evaluates(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             gateway = FakeGateway({"equity": 50000.0})
-            state = run_once(_cfg(tmp), gateway, NoNotify(), NoNews(), GuardianState())
+            # A Wednesday noon: clear of the weekend window, so the only thing that
+            # could engage the kill switch here is the equity reading itself.
+            wednesday = dt.datetime(2026, 9, 2, 12, 0, tzinfo=dt.UTC)
+            state = run_once(_cfg(tmp), gateway, NoNotify(), NoNews(), GuardianState(), now=wednesday)
             self.assertEqual(state.equity_now, 50000.0)
             self.assertFalse(gateway.killed)
+
+    def test_weekend_window_engages_the_kill_switch_with_an_injected_clock(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            gateway = FakeGateway({"equity": 50000.0})
+            saturday = dt.datetime(2026, 9, 5, 12, 0, tzinfo=dt.UTC)
+            run_once(_cfg(tmp), gateway, NoNotify(), NoNews(), GuardianState(), now=saturday)
+            self.assertTrue(gateway.killed)
 
 
 class SightTest(unittest.TestCase):

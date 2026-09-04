@@ -74,6 +74,22 @@ def _as_str(value: object, field_name: str) -> str:
     return value
 
 
+def _as_bool(value: object, field_name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in ("true", "yes", "false", "no"):
+        return value.strip().lower() in ("true", "yes")
+    raise ConfigError(f"'{field_name}' must be true or false, got {value!r}")
+
+
+def parse_hhmm(value: str, field_name: str) -> tuple[int, int]:
+    """'HH:MM' (24h UTC) -> (hour, minute); anything else is a config error."""
+    m = re.fullmatch(r"([01]?\d|2[0-3]):([0-5]\d)", value.strip())
+    if m is None:
+        raise ConfigError(f"'{field_name}' must be HH:MM in 24h UTC, got {value!r}")
+    return int(m.group(1)), int(m.group(2))
+
+
 def _typed_kwargs(raw: dict[str, object], types: dict[str, type], section_name: str) -> dict[str, object]:
     """Coerces a raw parsed section's values to the declared dataclass field types."""
     out: dict[str, object] = {}
@@ -86,6 +102,8 @@ def _typed_kwargs(raw: dict[str, object], types: dict[str, type], section_name: 
             out[key] = _as_float(value, field_name)
         elif kind is int:
             out[key] = _as_int(value, field_name)
+        elif kind is bool:
+            out[key] = _as_bool(value, field_name)
         else:
             out[key] = _as_str(value, field_name)
     return out
@@ -113,8 +131,17 @@ class LadderConfig:
     roll_utc_hour: int = 21
     news_pad_min: int = 5
     news_feed: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    # Comma-separated ForexFactory country codes whose high-impact events open a NEWS window.
+    news_currencies: str = "USD,EUR"
     fri_flat_utc: int = 20
+    # The WEEKEND rung is a market-calendar rule for instruments that CLOSE over the weekend
+    # (FX, metals, indices). The kill switch is account-global, so a book that trades 24/7
+    # instruments (crypto) must run on its own account with friday_flat: false and rely on the
+    # engine's per-symbol session calendar instead -- there is no per-symbol weekend flatten.
     friday_flat: bool = True
+    # When the weekend window ends (Sunday, HH:MM UTC). Brokers reopen at different times:
+    # Exness/IC Markets ~22:05, The5ers 22:10; set it to your venue's first tradable minute.
+    weekend_release_utc: str = "22:10"
 
     def __post_init__(self) -> None:
         if not (0 < self.soft_pct < self.hard_pct < self.static_pct):
@@ -123,6 +150,17 @@ class LadderConfig:
             raise ConfigError("ladder.roll_utc_hour must be in [0, 24)")
         if not (0 <= self.fri_flat_utc < 24):
             raise ConfigError("ladder.fri_flat_utc must be in [0, 24)")
+        if not self.news_currency_codes:
+            raise ConfigError("ladder.news_currencies must list at least one currency code")
+        parse_hhmm(self.weekend_release_utc, "ladder.weekend_release_utc")
+
+    @property
+    def news_currency_codes(self) -> tuple[str, ...]:
+        return tuple(c.strip().upper() for c in self.news_currencies.split(",") if c.strip())
+
+    @property
+    def weekend_release(self) -> tuple[int, int]:
+        return parse_hhmm(self.weekend_release_utc, "ladder.weekend_release_utc")
 
 
 @dataclass(frozen=True)
@@ -179,8 +217,10 @@ class GuardianConfig:
             "roll_utc_hour": int,
             "news_pad_min": int,
             "news_feed": str,
+            "news_currencies": str,
             "fri_flat_utc": int,
             "friday_flat": bool,
+            "weekend_release_utc": str,
         }
         # _typed_kwargs already validates each value against ladder_types/notify_types/
         # poll_types above at runtime; mypy can't correlate a dict[str, object] unpack

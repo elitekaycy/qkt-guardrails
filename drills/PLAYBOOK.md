@@ -24,6 +24,9 @@ logic or thresholds. All verified live 2026-08-31 on a demo account.
    expect `sight restored after N failed polls`. No crash, no stale kill state, and exactly one
    alert each way no matter how long the outage.
 
+8. **Version** — the first log line after start reads `guardian[<name>] v<X.Y.Z> up:` with the
+   version you meant to deploy. Wrong version = wrong binary; stop.
+
 Rule of thumb: if you cannot show a log line proving a layer fired, that layer does not exist.
 
 ## Executions on record
@@ -34,3 +37,14 @@ Rule of thumb: if you cannot show a log line proving a layer fired, that layer d
   respect (2 cycles, untouched), dead-gateway outage (loop survived), teardown flat. Cost: one
   0.01 round trip (~$0.50 spread). The package is drill-validated and eligible to replace the
   single-file deployment at the next maintenance window.
+- 2026-09-04 — v0.2.0 image (`qkt-guardrails:dev`, same tree as the tag), against the local demo
+  gateway (botverify, Exness-MT5Trial9 436804390) under the shared-account lock, market closed
+  (Friday 22:12-22:15 UTC), no positions open: version line (drill 8), no-op startup, SOFT engage
+  → release on restored equity, HARD engage+flatten → held with equity restored while the daily
+  lock stood → released once the lock cleared as the day roll does, STATIC engage+flatten → lock
+  survived a restart → STATIC-HOLD with the floor back below equity → released only after the
+  operator cleared `lock` → manual-kill respect (kill engaged by hand, guardian left it alone),
+  WEEKEND engage (friday_flat: true inside the window) and release (friday_flat: false), BLIND on
+  a dead port after exactly 3 polls. Kill switch left released, venue untouched. Drill 1 (order
+  round trip through kill+flatten) needs an open market: scheduled for the Sunday 22:10 UTC open
+  on the deployed bot1 instance.

@@ -1,3 +1,3 @@
-"""qkt-guardrails: an engine-independent equity watchdog for MT5 prop/live accounts."""
+"""qkt-guardrails: an engine-independent equity watchdog for MT5 accounts."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

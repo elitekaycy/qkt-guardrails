@@ -17,8 +17,15 @@ ladder:
   hard_pct: 3.5
   static_pct: 6
   roll_utc_hour: 21
-  # friday_flat: true (default) closes everything Friday 20:00 UTC and blocks entries
-  # until Sunday 22:10. Evidence for the default (Dukascopy ticks, 2018-2025): gold's
+  friday_flat: true
+  fri_flat_utc: 20
+  # Your venue's first tradable Sunday minute (UTC). The5ers reopens 22:10; Exness and
+  # IC Markets ~22:05. A 24/7 (crypto) book sets friday_flat: false on its OWN account --
+  # the kill switch is account-global and cannot spare some symbols.
+  weekend_release_utc: "22:10"
+  news_currencies: "USD,EUR"
+  # friday_flat: true (default) closes everything Friday fri_flat_utc:00 UTC and blocks
+  # entries until Sunday weekend_release_utc. Evidence for the default (Dukascopy ticks, 2018-2025): gold's
   # median weekend gap is 0.06% (a fair coin flip), but p99 = 1.23% and the max = 2.49%
   # (2020-03-13) — and a gap JUMPS venue stops, filling at the reopen. Intraday bracket
   # books lose ~nothing by being flat; a genuine multi-day swing book may set
