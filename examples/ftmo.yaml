@@ -24,9 +24,20 @@ ladder:
   # the kill switch is account-global and cannot spare some symbols.
   weekend_release_utc: "22:10"
   news_currencies: "USD,EUR"
+  # news_include_holidays: false     # also open a window on a bank holiday for these currencies
+  # news_timeout_seconds: 30         # feed fetch runs on a background thread, never the guard loop
+  # news_refresh_steady_seconds: 21600
+  # news_retry_seconds: 300          # after a FAILED fetch; keeps last-known windows meanwhile
 
 # Optional Telegram alerts on every engage/release — uncomment and set
 # TG_TOKEN/TG_CHAT in .env if you want them; omit the whole section otherwise.
 # notify:
 #   telegram_token: ${TG_TOKEN}
 #   telegram_chat: ${TG_CHAT}
+
+# poll:
+#   interval_seconds: 30
+#   gateway_timeout_seconds: 20      # must not exceed interval_seconds (two calls per cycle)
+#   blind_after_failures: 3          # consecutive failed polls before the BLIND alert
+# health:
+#   stale_cycles: 3                  # container unhealthy after this many intervals without a saved cycle

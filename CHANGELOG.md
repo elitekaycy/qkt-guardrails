@@ -3,6 +3,42 @@
 All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each tag publishes
 `ghcr.io/elitekaycy/qkt-guardrails:vX.Y.Z` and a GitHub Release.
 
+## v0.3.0 — 2026-09-06
+
+### Fixed
+- The ForexFactory fetch ran on the guard loop, between reading equity and reading the kill
+  switch: on a refresh cycle a hung feed could stretch one cycle to ~70s before the sleep. A
+  safety daemon must not have a third-party HTTP call on its critical path. Fetching now runs
+  on a daemon thread; `windows()` never blocks.
+- A failed fetch and a successful one shared one timer, so a feed outage at startup left the
+  NEWS rung unarmed for a full hour. Failure now retries on `news_retry_seconds` (default 300).
+- A bank holiday was a five-minute window at midnight. With `news_include_holidays: true` it
+  is now the whole calendar day in the feed's own offset — the row is stamped 00:00 with no
+  duration, and the hazard is the session.
+- Several releases at the same minute (CPI m/m + y/y + core) produced duplicate windows and an
+  inflated log count. Windows are de-duplicated.
+- A naive `date` (no UTC offset) was read as host-local time and would have shifted a window
+  by the New York offset. It is now rejected as malformed.
+- An unknown config key (`soft_pcnt: 1`) silently left the real key at its default. It is now
+  a load-time error.
+
+### Changed
+- `guardian/news.py` is a source seam: `Source.fetch() -> list[Event]`, each `Event` carrying
+  its own `(start, end)` window, `NewsCache` over any number of sources with independent
+  backoff and merged windows. The ladder consumes windows (`is_in_news_window(now, windows)`)
+  and no longer knows about pads or providers. Adding a provider is a new transformer.
+- Startup log line now also reports `poll=`, `timeout=`, `blind_after=`; the news line reads
+  `news[forexfactory]: N window(s) this week`.
+
+### Added
+- Every runtime constant is configurable, each defaulting to its previous hard-coded value:
+  `poll.gateway_timeout_seconds` (20), `poll.blind_after_failures` (3), `health.stale_cycles`
+  (3), `notify.telegram_timeout_seconds` (10), `ladder.news_timeout_seconds` (30),
+  `ladder.news_refresh_steady_seconds` (21600), `ladder.news_retry_seconds` (300),
+  `ladder.news_include_holidays` (false).
+- Load-time validation that `poll.gateway_timeout_seconds` does not exceed
+  `poll.interval_seconds` — a 10s poll with a 20s timeout is not a 10s poll.
+
 ## v0.2.0 — 2026-09-04
 
 First release deployed on a live prop account (The5ers High Stakes 50k, bot1), replacing the

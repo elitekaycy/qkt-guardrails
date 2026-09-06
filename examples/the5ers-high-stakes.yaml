@@ -24,6 +24,10 @@ ladder:
   # the kill switch is account-global and cannot spare some symbols.
   weekend_release_utc: "22:10"
   news_currencies: "USD,EUR"
+  # news_include_holidays: false     # also open a window on a bank holiday for these currencies
+  # news_timeout_seconds: 30         # feed fetch runs on a background thread, never the guard loop
+  # news_refresh_steady_seconds: 21600
+  # news_retry_seconds: 300          # after a FAILED fetch; keeps last-known windows meanwhile
   # friday_flat: true (default) closes everything Friday fri_flat_utc:00 UTC and blocks
   # entries until Sunday weekend_release_utc. Evidence for the default (Dukascopy ticks, 2018-2025): gold's
   # median weekend gap is 0.06% (a fair coin flip), but p99 = 1.23% and the max = 2.49%
@@ -36,3 +40,10 @@ ladder:
 # notify:
 #   telegram_token: ${TG_TOKEN}
 #   telegram_chat: ${TG_CHAT}
+
+# poll:
+#   interval_seconds: 30
+#   gateway_timeout_seconds: 20      # must not exceed interval_seconds (two calls per cycle)
+#   blind_after_failures: 3          # consecutive failed polls before the BLIND alert
+# health:
+#   stale_cycles: 3                  # container unhealthy after this many intervals without a saved cycle

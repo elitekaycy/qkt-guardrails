@@ -35,8 +35,8 @@ class FakeGateway:
 
 
 class NoNews:
-    def events(self) -> list[float]:
-        return []
+    def windows(self) -> tuple[()]:
+        return ()
 
 
 class NoNotify:

@@ -17,7 +17,7 @@ logic or thresholds. All verified live 2026-08-31 on a demo account.
    start.
 5. **Manual-kill respect** — engage the kill switch by hand; verify the guardian does NOT
    release it (it only releases kills it engaged).
-6. **News feed** — confirm the startup log line `news feed: N high-impact USD/EUR events`;
+6. **News feed** — confirm the log line `news[forexfactory]: N window(s) this week` (with `news_include_holidays: true`, a bank-holiday week shows a 1440-minute window);
    403/429 from the feed must back off, never crash the loop.
 7. **Gateway outage** — stop the gateway; on the third failed poll (~90s) expect
    `BLIND: 3 polls failed` in the log and, with `notify:` set, on Telegram; start the gateway;

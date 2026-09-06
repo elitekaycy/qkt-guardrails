@@ -74,18 +74,32 @@ class FridayFlatToggleTest(unittest.TestCase):
 
 
 class NewsWindowTest(unittest.TestCase):
-    def test_within_pad_minutes_of_an_event_is_in_window(self) -> None:
-        now = at("2026-06-01T12:00:00")
-        event = now.timestamp() + 3 * 60
-        self.assertTrue(is_in_news_window(now, [event], pad_minutes=5))
+    """The ladder sees (start, end) intervals; the source decides their shape."""
 
-    def test_outside_pad_minutes_is_not_in_window(self) -> None:
-        now = at("2026-06-01T12:00:00")
-        event = now.timestamp() + 10 * 60
-        self.assertFalse(is_in_news_window(now, [event], pad_minutes=5))
+    def test_inside_a_window_is_in_window(self) -> None:
+        now = at("2026-06-01T12:00:00").timestamp()
+        self.assertTrue(is_in_news_window(at("2026-06-01T12:00:00"), [(now - 120, now + 180)]))
 
-    def test_no_events_is_not_in_window(self) -> None:
-        self.assertFalse(is_in_news_window(at("2026-06-01T12:00:00"), None, pad_minutes=5))
+    def test_window_edges_are_inclusive(self) -> None:
+        now = at("2026-06-01T12:00:00").timestamp()
+        self.assertTrue(is_in_news_window(at("2026-06-01T12:00:00"), [(now - 300, now)]))
+        self.assertTrue(is_in_news_window(at("2026-06-01T12:00:00"), [(now, now + 300)]))
+
+    def test_outside_every_window_is_not_in_window(self) -> None:
+        now = at("2026-06-01T12:00:00").timestamp()
+        later, earlier = (now + 600, now + 1200), (now - 1200, now - 600)
+        self.assertFalse(is_in_news_window(at("2026-06-01T12:00:00"), [later, earlier]))
+
+    def test_a_session_long_window_covers_the_whole_session(self) -> None:
+        """A bank holiday is one window from 00:00 to 24:00, not a five-minute point."""
+        day = at("2026-06-01T00:00:00").timestamp()
+        for hour in (0, 9, 15, 23):
+            self.assertTrue(is_in_news_window(at(f"2026-06-01T{hour:02d}:30:00"), [(day, day + 86_400)]))
+        self.assertFalse(is_in_news_window(at("2026-06-02T00:30:00"), [(day, day + 86_400)]))
+
+    def test_no_windows_is_not_in_window(self) -> None:
+        self.assertFalse(is_in_news_window(at("2026-06-01T12:00:00"), None))
+        self.assertFalse(is_in_news_window(at("2026-06-01T12:00:00"), ()))
 
 
 class EvaluateTest(unittest.TestCase):
@@ -150,14 +164,16 @@ class EvaluateTest(unittest.TestCase):
     def test_news_window_kills_without_flattening(self) -> None:
         now = at("2026-06-03T12:00:00")  # a Wednesday, clear of the weekend window
         state = GuardianState(day="2026-06-03", prev_close=10_000.0)
-        _, decision = evaluate(state, self.cfg, 10_000.0, now, 10_000.0, [now.timestamp()])
+        t = now.timestamp()
+        _, decision = evaluate(state, self.cfg, 10_000.0, now, 10_000.0, [(t - 300, t + 300)])
         self.assertEqual(decision.reason, "NEWS")
         self.assertFalse(decision.want_flat)
 
     def test_static_takes_priority_over_every_other_rung(self) -> None:
         now = at("2026-06-05T21:00:00")  # Friday evening: would also trigger WEEKEND
         state = GuardianState(day="2026-06-05", prev_close=10_000.0)
-        _, decision = evaluate(state, self.cfg, 10_000.0, now, 9_300.0, [now.timestamp()])
+        t = now.timestamp()
+        _, decision = evaluate(state, self.cfg, 10_000.0, now, 9_300.0, [(t - 300, t + 300)])
         self.assertEqual(decision.reason, "STATIC")
 
 

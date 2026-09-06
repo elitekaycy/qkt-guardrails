@@ -54,6 +54,14 @@ container reads one YAML config that names *which* gateway/account it watches �
   [Why no PyYAML?](#why-no-pyyaml).
 - **Config as data.** One YAML file per account, named after the qkt/mt5 instance it watches;
   secrets stay in `${VAR}` env references, never in the file.
+- **Pluggable news sources.** The ladder consumes UTC windows; a provider is a `Source` that
+  turns its payload into `Event`s carrying their own window (`guardian/news.py`). ForexFactory
+  ships today; another calendar, earnings, or a scheduled report is a new transformer, not a
+  change to the ladder. Fetching runs on its own thread — a hung feed never delays a poll —
+  and sources fail independently. See [News sources](#news-sources).
+- **Every runtime constant is configurable, with the historical value as the default** —
+  poll interval, gateway timeout, blind threshold, news cadence/timeout, healthcheck window.
+  A bad value, or an unknown key (a typo like `soft_pcnt`), fails at load.
 - **Crash-safe state.** Atomic writes (`guardian/state.py`), so a container restart never loses
   today's rollover anchor, the static lock, or which kill switch it owns.
 - **Docker-first.** One small `python:3.12-slim` image, non-root user (uid 10001 — `chown -R
@@ -70,7 +78,7 @@ container reads one YAML config that names *which* gateway/account it watches �
 | SOFT | daily equity loss ≥ `soft_pct` of prev-day close | kill switch on — no new orders; open brackets keep managing |
 | HARD | ≥ `hard_pct` | kill + **flatten everything**; auto-clears at the firm's day roll (`roll_utc_hour`) |
 | STATIC | equity ≤ initial − `static_pct`% | kill + flatten, **locked** until an operator clears it |
-| NEWS | ±`news_pad_min` min around high-impact events for `news_currencies` (default USD,EUR; ForexFactory feed) | kill on, auto-release after |
+| NEWS | inside any event window: ±`news_pad_min` min around a high-impact release for `news_currencies` (default USD,EUR; ForexFactory), or the whole session of a bank holiday when `news_include_holidays: true` | kill on, auto-release after |
 | WEEKEND | Fri `fri_flat_utc`:00 UTC, only when `friday_flat: true` | kill + flatten; releases Sun `weekend_release_utc` (default 22:10) |
 
 Layers are evaluated top-down; STATIC always wins if triggered, even during a WEEKEND or NEWS
@@ -91,8 +99,9 @@ symbols and not others. That gives one hard rule:
 - `weekend_release_utc` is your venue's first tradable Sunday minute (Exness/IC Markets
   reopen ~22:05 UTC, The5ers 22:10). Too early and the engine sees a 423 storm; too late
   and you miss the open. Telegram alerts on every engage/release (optional, `notify:` in config), and on the one
-failure the ladder cannot see: three straight failed polls means the guardian is **blind** — it
-is not watching equity at all — so it says so, once, and again when sight returns.
+failure the ladder cannot see: `blind_after_failures` straight failed polls (default 3) means the
+guardian is **blind** — it is not watching equity at all — so it says so, once, and again when
+sight returns.
 
 ## Quick start
 
@@ -131,17 +140,57 @@ ladder:
   fri_flat_utc: 20
   weekend_release_utc: "22:10"   # your venue's first tradable Sunday minute
   news_currencies: "USD,EUR"
+  # news_include_holidays: false # a bank holiday for these currencies is a session-long window
+  # news_timeout_seconds: 30     # fetch runs on the news thread, never the guard loop
+  # news_refresh_steady_seconds: 21600
+  # news_retry_seconds: 300      # after a FAILED fetch; last-known windows stay in force
 
 # notify:                        # optional — omit entirely to disable
 #   telegram_token: ${TG_TOKEN}
 #   telegram_chat: ${TG_CHAT}
+#   telegram_timeout_seconds: 10
+
+# poll:
+#   interval_seconds: 30
+#   gateway_timeout_seconds: 20  # must not exceed interval_seconds (two gateway calls per cycle)
+#   blind_after_failures: 3
+
+# health:
+#   stale_cycles: 3              # container unhealthy after this many intervals without a saved cycle
 ```
+
+Every commented value above is the default, i.e. exactly what the guardian ran with before the
+knob existed. Unknown keys are rejected at load so a typo cannot silently leave a default in
+place.
 
 `target.gateway_url`/`api_key`, `account.initial_balance`, and the whole `ladder:`/`notify:`/
 `poll:`/`state:` sections are all optional except `target.name`, `target.gateway_url`,
 `target.api_key`, and `account.initial_balance` — everything else falls back to the SOFT/HARD/
 STATIC defaults shown above. A bad or missing field fails to start with a clear error; the
 guardian never guesses at a threshold.
+
+### News sources
+
+`guardian/news.py` separates three things so a new provider touches only the first:
+
+```
+Source.fetch(timeout) -> list[Event] | None     one provider, one transformer
+Event(start, end, scope, severity, source)      the fields that influence the decision
+windows(events) -> ((start, end), ...)          what the ladder consumes
+```
+
+An `Event` carries its own UTC window: ForexFactory pads a release by `news_pad_min` and
+makes a bank holiday the whole calendar day; an earnings source would use the call's
+duration. The ladder only asks "is now inside any window". `NewsCache` refreshes every
+source on a daemon thread with per-source backoff (`news_refresh_steady_seconds` after a
+success, `news_retry_seconds` after a failure), merges their windows, and keeps a source's
+last-known windows through its outages. `start()` waits at most one fetch timeout for the
+sources to arm, however many there are.
+
+To add a provider: implement `name` and `fetch` (return `None` on failure, never raise on
+bad data), give each event an honest window, and append it in `build_news_cache`. Config
+for a second source is the one thing not built yet — `simpleyaml` has no lists, and the
+right shape depends on the provider — so it lands with the first real second source.
 
 ### Why no PyYAML?
 
@@ -166,7 +215,7 @@ Copy one from `examples/` into `configs/<account-name>.yaml` and fill in `target
 ## Development
 
 ```bash
-python3 -m unittest discover -s tests -v   # 59 tests, no gateway or network needed
+python3 -m unittest discover -s tests -v   # 95 tests, no gateway or network needed
 python3 -m ruff check guardian tests
 python3 -m mypy
 docker build -t qkt-guardrails:dev .

@@ -9,11 +9,11 @@ from guardian.config import GuardianConfig
 from guardian.gateway import GatewayClient, GatewayError
 from guardian.ladder import evaluate
 from guardian.logging import log
-from guardian.news import NewsCache
+from guardian.news import ForexFactorySource, NewsCache
 from guardian.notify import TelegramNotifier
 from guardian.state import GuardianState
 
-# Three straight failed polls, the same window the container healthcheck calls stale.
+# Default for `poll.blind_after_failures`; the config decides, this is the fallback.
 BLIND_AFTER_FAILURES = 3
 
 
@@ -45,24 +45,51 @@ class Sight:
         return f"sight restored after {failures} failed polls"
 
 
+def build_news_cache(cfg: GuardianConfig) -> NewsCache:
+    """One ForexFactory source today. A second provider is another entry in this list."""
+    sources = [
+        ForexFactorySource(
+            cfg.ladder.news_feed,
+            cfg.ladder.news_currency_codes,
+            include_holidays=cfg.ladder.news_include_holidays,
+            pad_seconds=cfg.ladder.news_pad_min * 60,
+        ),
+    ]
+    return NewsCache(
+        sources,
+        timeout_seconds=cfg.ladder.news_timeout_seconds,
+        refresh_steady_seconds=cfg.ladder.news_refresh_steady_seconds,
+        retry_seconds=cfg.ladder.news_retry_seconds,
+    )
+
+
 def run_forever(cfg: GuardianConfig) -> None:
-    gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key)
-    notifier = TelegramNotifier(cfg.notify)
-    news = NewsCache(cfg.ladder.news_feed, cfg.ladder.news_currency_codes)
+    gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key, cfg.poll.gateway_timeout_seconds)
+    notifier = TelegramNotifier(cfg.notify, cfg.notify.telegram_timeout_seconds)
+    news = build_news_cache(cfg)
     state = GuardianState.load(cfg.state_path)
-    sight = Sight()
+    sight = Sight(cfg.poll.blind_after_failures)
 
     weekend = (
         f"weekend=Fri{cfg.ladder.fri_flat_utc:02d}:00->Sun{cfg.ladder.weekend_release_utc}UTC"
         if cfg.ladder.friday_flat
         else "weekend=off"
     )
+    holidays = "+holidays" if cfg.ladder.news_include_holidays else ""
     log(
         f"guardian[{cfg.target.name}] v{__version__} up: initial={cfg.account.initial_balance} "
         f"soft={cfg.ladder.soft_pct}% hard={cfg.ladder.hard_pct}% static={cfg.ladder.static_pct}% "
         f"roll={cfg.ladder.roll_utc_hour}UTC pad={cfg.ladder.news_pad_min}m "
-        f"news={','.join(cfg.ladder.news_currency_codes)} {weekend}"
+        f"news={','.join(cfg.ladder.news_currency_codes)}{holidays} {weekend} "
+        f"poll={cfg.poll.interval_seconds}s timeout={cfg.poll.gateway_timeout_seconds:g}s "
+        f"blind_after={cfg.poll.blind_after_failures}"
     )
+    # Wait one fetch timeout, at most, for the sources to arm so the NEWS rung is live from
+    # poll one; every refresh runs on the news thread, never on this loop.
+    news.start()
+    if not news.armed:
+        log(f"[{cfg.target.name}] news source(s) not armed at startup: {', '.join(news.unarmed)}; "
+            "NEWS rung covers nothing from them until they load")
 
     while True:
         alert: str | None = None
@@ -103,7 +130,7 @@ def run_once(
     if equity <= 0:
         raise GatewayError(f"account payload with non-positive equity: {equity!r}")
 
-    state, decision = evaluate(state, cfg.ladder, cfg.account.initial_balance, now, equity, news.events())
+    state, decision = evaluate(state, cfg.ladder, cfg.account.initial_balance, now, equity, news.windows())
 
     kill_switch_active = gateway.kill_switch_active()
 

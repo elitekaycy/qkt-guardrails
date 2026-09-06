@@ -9,10 +9,14 @@ a running gateway or real wall-clock time.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from guardian.config import LadderConfig
 from guardian.state import GuardianState
+
+# A UTC interval (start, end) in epoch seconds during which new orders are unsafe.
+Window = tuple[float, float]
 
 
 @dataclass(frozen=True)
@@ -52,12 +56,14 @@ def is_friday_flat_window(
     return False
 
 
-def is_in_news_window(now: dt.datetime, news_event_timestamps: list[float] | None, pad_minutes: int) -> bool:
-    if not news_event_timestamps:
+def is_in_news_window(now: dt.datetime, news_windows: Iterable[Window] | None) -> bool:
+    """True when `now` falls inside any (start, end) UTC interval. The windows already carry
+    their padding -- a release is a point padded by the source, a holiday is a whole
+    session -- so the ladder needs no notion of pad or provider."""
+    if not news_windows:
         return False
     now_ts = now.timestamp()
-    pad = pad_minutes * 60
-    return any(abs(now_ts - ts) <= pad for ts in news_event_timestamps)
+    return any(start <= now_ts <= end for start, end in news_windows)
 
 
 def roll_day(state: GuardianState, now: dt.datetime, cfg: LadderConfig, equity: float) -> GuardianState:
@@ -84,7 +90,7 @@ def evaluate(
     initial_balance: float,
     now: dt.datetime,
     equity: float,
-    news_event_timestamps: list[float] | None,
+    news_windows: Iterable[Window] | None,
 ) -> tuple[GuardianState, Decision]:
     """Runs one evaluation cycle: rolls the day if needed, then walks the ladder
     top-down (STATIC > DAILY-HARD > DAILY-SOFT > WEEKEND > NEWS) and returns the
@@ -119,7 +125,7 @@ def evaluate(
         if now.weekday() == 4 and state.fri_flat != anchor:
             want_flat = True
             state.fri_flat = anchor
-    elif is_in_news_window(now, news_event_timestamps, cfg.news_pad_min):
+    elif is_in_news_window(now, news_windows):
         want_kill, reason = True, "NEWS"
 
     return state, Decision(want_kill=want_kill, want_flat=want_flat, reason=reason, day_dd_pct=day_dd_pct)
