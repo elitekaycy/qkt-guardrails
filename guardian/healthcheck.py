@@ -12,8 +12,6 @@ from pathlib import Path
 
 from guardian.config import ConfigError, GuardianConfig
 
-_STALE_CYCLES = 3
-
 
 def main(argv: list[str]) -> int:
     if len(argv) != 1:
@@ -31,7 +29,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     age = time.time() - state_file.stat().st_mtime
-    stale_after = cfg.poll.interval_seconds * _STALE_CYCLES
+    stale_after = cfg.poll.interval_seconds * cfg.health.stale_cycles
     if age > stale_after:
         print(f"healthcheck: state is {age:.0f}s old, stale after {stale_after}s", file=sys.stderr)
         return 1
