@@ -152,7 +152,7 @@ ladder:
 
 # poll:
 #   interval_seconds: 30
-#   gateway_timeout_seconds: 20  # must not exceed interval_seconds (two gateway calls per cycle)
+#   gateway_timeout_seconds: 20  # default min(20, interval_seconds); may not exceed the interval
 #   blind_after_failures: 3
 
 # health:
