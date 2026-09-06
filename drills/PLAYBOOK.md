@@ -48,3 +48,18 @@ Rule of thumb: if you cannot show a log line proving a layer fired, that layer d
   a dead port after exactly 3 polls. Kill switch left released, venue untouched. Drill 1 (order
   round trip through kill+flatten) needs an open market: scheduled for the Sunday 22:10 UTC open
   on the deployed bot1 instance.
+- 2026-09-06 — v0.3.0 image (`ghcr.io/elitekaycy/qkt-guardrails:v0.3.0`, the exact tag rolled),
+  against the local demo gateway (botverify, Exness-MT5Trial9 436804390) under the shared-account
+  lock, market closed (Sunday 10:34 UTC), no positions open, with bot1's live config verbatim
+  except gateway URL, `initial_balance` pinned to the demo's equity (no rung can fire),
+  `friday_flat: false` (Sunday), `news_include_holidays: true` (to exercise the new path):
+  version line with the new `poll=/timeout=/blind_after=` fields (drill 8), config loaded through
+  the new unknown-key/timeout validation, `news[forexfactory]: 5 window(s) this week` including
+  the 1440-minute Labor Day window, healthcheck rc=0, state file written by uid 10001, kill
+  switch untouched (`false` after), no loop error/BLIND/traceback. Then bot1's file verbatim
+  through the v0.3.0 loader: loads. Rolled bot1 10:35 UTC: `v0.3.0 up`, 4 windows (holidays off
+  there), state carried (`guard_kill: true`, `fri_flat: 2026-09-04`), container healthy, weekend
+  kill still engaged on the gateway. Not drilled this time (ladder rungs unchanged since v0.2.0
+  except NEWS window shape): SOFT/HARD/STATIC/manual-kill/BLIND — last proven 2026-09-04. Drill 1
+  (order round trip) still needs an open market: Sunday 22:10 UTC open on bot1.
+
