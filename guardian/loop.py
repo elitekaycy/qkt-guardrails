@@ -64,7 +64,7 @@ def build_news_cache(cfg: GuardianConfig) -> NewsCache:
 
 
 def run_forever(cfg: GuardianConfig) -> None:
-    gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key, cfg.poll.gateway_timeout_seconds)
+    gateway = GatewayClient(cfg.target.gateway_url, cfg.target.api_key, cfg.poll.gateway_timeout)
     notifier = TelegramNotifier(cfg.notify, cfg.notify.telegram_timeout_seconds)
     news = build_news_cache(cfg)
     state = GuardianState.load(cfg.state_path)
@@ -81,7 +81,7 @@ def run_forever(cfg: GuardianConfig) -> None:
         f"soft={cfg.ladder.soft_pct}% hard={cfg.ladder.hard_pct}% static={cfg.ladder.static_pct}% "
         f"roll={cfg.ladder.roll_utc_hour}UTC pad={cfg.ladder.news_pad_min}m "
         f"news={','.join(cfg.ladder.news_currency_codes)}{holidays} {weekend} "
-        f"poll={cfg.poll.interval_seconds}s timeout={cfg.poll.gateway_timeout_seconds:g}s "
+        f"poll={cfg.poll.interval_seconds}s timeout={cfg.poll.gateway_timeout:g}s "
         f"blind_after={cfg.poll.blind_after_failures}"
     )
     # Wait one fetch timeout, at most, for the sources to arm so the NEWS rung is live from

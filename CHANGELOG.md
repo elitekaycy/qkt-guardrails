@@ -36,8 +36,10 @@ All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each ta
   (3), `notify.telegram_timeout_seconds` (10), `ladder.news_timeout_seconds` (30),
   `ladder.news_refresh_steady_seconds` (21600), `ladder.news_retry_seconds` (300),
   `ladder.news_include_holidays` (false).
-- Load-time validation that `poll.gateway_timeout_seconds` does not exceed
-  `poll.interval_seconds` — a 10s poll with a 20s timeout is not a 10s poll.
+- Load-time validation that an explicit `poll.gateway_timeout_seconds` does not exceed
+  `poll.interval_seconds` — a 10s poll with a 20s timeout is not a 10s poll. Unset, the
+  timeout is `min(20, interval_seconds)`, so a config with a short poll keeps starting after
+  the upgrade instead of being refused for a value it never wrote.
 
 ## v0.2.0 — 2026-09-04
 

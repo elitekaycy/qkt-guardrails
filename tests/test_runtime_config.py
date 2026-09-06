@@ -32,7 +32,7 @@ class DefaultsTest(unittest.TestCase):
     def test_defaults_match_the_historical_constants(self) -> None:
         cfg = GuardianConfig.load(_write(MINIMAL))
         self.assertEqual(cfg.poll.interval_seconds, 30)
-        self.assertEqual(cfg.poll.gateway_timeout_seconds, 20.0)
+        self.assertEqual(cfg.poll.gateway_timeout, 20.0)
         self.assertEqual(cfg.poll.blind_after_failures, 3)
         self.assertEqual(cfg.health.stale_cycles, 3)
         self.assertEqual(cfg.notify.telegram_timeout_seconds, 10.0)
@@ -74,7 +74,7 @@ health:
         self.assertEqual(cfg.ladder.news_retry_seconds, 60)
         self.assertEqual(cfg.notify.telegram_timeout_seconds, 4.0)
         self.assertEqual(cfg.poll.interval_seconds, 10)
-        self.assertEqual(cfg.poll.gateway_timeout_seconds, 5.0)
+        self.assertEqual(cfg.poll.gateway_timeout, 5.0)
         self.assertEqual(cfg.poll.blind_after_failures, 6)
         self.assertEqual(cfg.health.stale_cycles, 5)
 
@@ -105,12 +105,20 @@ class ValidationTest(unittest.TestCase):
             GuardianConfig.load(_write(MINIMAL + yaml))
         self.assertIn(fragment, str(ctx.exception))
 
-    def test_timeout_longer_than_interval_is_rejected(self) -> None:
+    def test_explicit_timeout_longer_than_interval_is_rejected(self) -> None:
         self._bad("poll:\n  interval_seconds: 10\n  gateway_timeout_seconds: 20\n", "must not exceed")
 
     def test_timeout_equal_to_interval_is_allowed(self) -> None:
         cfg = GuardianConfig.load(_write(MINIMAL + "poll:\n  interval_seconds: 20\n  gateway_timeout_seconds: 20\n"))
-        self.assertEqual(cfg.poll.gateway_timeout_seconds, 20.0)
+        self.assertEqual(cfg.poll.gateway_timeout, 20.0)
+
+    def test_unset_timeout_is_capped_at_the_interval(self) -> None:
+        """The CI smoke config -- a 2s poll and no timeout -- was valid before and must stay
+        valid: an upgrade may not refuse a config for a value it never wrote."""
+        cfg = GuardianConfig.load(_write(MINIMAL + "poll:\n  interval_seconds: 2\n"))
+        self.assertEqual(cfg.poll.gateway_timeout, 2.0)
+        cfg = GuardianConfig.load(_write(MINIMAL + "poll:\n  interval_seconds: 30\n"))
+        self.assertEqual(cfg.poll.gateway_timeout, 20.0)      # the historical value, unchanged
 
     def test_non_positive_values_are_rejected(self) -> None:
         self._bad("poll:\n  interval_seconds: 0\n", "poll.interval_seconds")

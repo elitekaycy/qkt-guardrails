@@ -206,13 +206,21 @@ class NotifyConfig:
         return bool(self.telegram_token and self.telegram_chat)
 
 
+DEFAULT_GATEWAY_TIMEOUT_SECONDS = 20.0
+
+
 @dataclass(frozen=True)
 class PollConfig:
     interval_seconds: int = 30
     # Per-request timeout for the two gateway calls a cycle makes (/account, /health). A cycle
-    # can therefore take up to 2x this before it sleeps, which is why the interval must not be
-    # shorter than the timeout: a 10s poll with a 20s timeout is not a 10s poll.
-    gateway_timeout_seconds: float = 20.0
+    # can therefore take up to 2x this before it sleeps, which is why the timeout may not be
+    # longer than the interval: a 10s poll with a 20s timeout is not a 10s poll.
+    #
+    # Unset, it is min(20, interval_seconds) -- 20s was the hard-coded value, and capping it at
+    # the interval means a config with a short poll keeps starting after the upgrade instead of
+    # being refused for a timeout it never wrote. An EXPLICIT value longer than the interval is
+    # still an error: that one the operator did write.
+    gateway_timeout_seconds: float | None = None
     # Consecutive failed polls before the guardian declares itself BLIND (alert once, and
     # once more when sight returns). With the defaults that is 90s of not seeing equity.
     blind_after_failures: int = 3
@@ -220,9 +228,13 @@ class PollConfig:
     def __post_init__(self) -> None:
         if self.interval_seconds <= 0:
             raise ConfigError("poll.interval_seconds must be positive")
-        if self.gateway_timeout_seconds <= 0:
+        if self.gateway_timeout_seconds is None:
+            object.__setattr__(
+                self, "gateway_timeout_seconds", min(DEFAULT_GATEWAY_TIMEOUT_SECONDS, float(self.interval_seconds))
+            )
+        elif self.gateway_timeout_seconds <= 0:
             raise ConfigError("poll.gateway_timeout_seconds must be positive")
-        if self.gateway_timeout_seconds > self.interval_seconds:
+        elif self.gateway_timeout_seconds > self.interval_seconds:
             raise ConfigError(
                 "poll.gateway_timeout_seconds must not exceed poll.interval_seconds "
                 f"({self.gateway_timeout_seconds} > {self.interval_seconds}): a slow gateway would "
@@ -230,6 +242,12 @@ class PollConfig:
             )
         if self.blind_after_failures < 1:
             raise ConfigError("poll.blind_after_failures must be >= 1")
+
+    @property
+    def gateway_timeout(self) -> float:
+        """The resolved timeout, always a float once constructed."""
+        assert self.gateway_timeout_seconds is not None
+        return self.gateway_timeout_seconds
 
 
 @dataclass(frozen=True)

@@ -37,7 +37,7 @@ ladder:
 
 # poll:
 #   interval_seconds: 30
-#   gateway_timeout_seconds: 20      # must not exceed interval_seconds (two calls per cycle)
+#   gateway_timeout_seconds: 20      # default min(20, interval_seconds); may not exceed it
 #   blind_after_failures: 3          # consecutive failed polls before the BLIND alert
 # health:
 #   stale_cycles: 3                  # container unhealthy after this many intervals without a saved cycle
