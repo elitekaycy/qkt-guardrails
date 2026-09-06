@@ -5,6 +5,8 @@ All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each ta
 
 ## v0.3.0 — 2026-09-06
 
+Deployed to bot1 (The5ers High Stakes 50k) 2026-09-06 10:35 UTC, config unchanged.
+
 ### Fixed
 - The ForexFactory fetch ran on the guard loop, between reading equity and reading the kill
   switch: on a refresh cycle a hung feed could stretch one cycle to ~70s before the sleep. A
