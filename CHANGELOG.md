@@ -3,6 +3,18 @@
 All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each tag publishes
 `ghcr.io/elitekaycy/qkt-guardrails:vX.Y.Z` and a GitHub Release.
 
+## v0.4.0 — 2026-09-07
+
+### Added
+- **Hub journal news source.** `ladder.news_hub_root` reads NEWS-rung event windows from a
+  qkt-data-hub store on disk instead of fetching the ForexFactory feed, removing the only
+  outbound network call the brake makes. A stale hub heartbeat is treated as a failed fetch, so
+  the cache keeps its last known windows rather than concluding no release is coming; a missing
+  heartbeat, a missing journal or an unreadable file fail the same way.
+  `ladder.news_hub_stale_after_seconds` sets the threshold (default 900). Off by default: without
+  `news_hub_root` the HTTP source is constructed exactly as before. Not yet drilled against a hub
+  store on a real account; add that to `drills/PLAYBOOK.md` before enabling it there.
+
 ## v0.3.0 — 2026-09-06
 
 Deployed to bot1 (The5ers High Stakes 50k) 2026-09-06 10:35 UTC, config unchanged.
