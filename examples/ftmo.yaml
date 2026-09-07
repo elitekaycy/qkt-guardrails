@@ -28,6 +28,13 @@ ladder:
   # news_timeout_seconds: 30         # feed fetch runs on a background thread, never the guard loop
   # news_refresh_steady_seconds: 21600
   # news_retry_seconds: 300          # after a FAILED fetch; keeps last-known windows meanwhile
+  # Read event windows from a qkt-data-hub store instead of fetching the feed. This removes the
+  # only outbound network call the brake makes: a hub already collecting that calendar on this
+  # host holds the same records, and reading them needs nothing but the standard library. Mount
+  # the store read-only -- the hub is its only writer.
+  # news_hub_root: /var/lib/qkt-hub
+  # news_hub_stale_after_seconds: 900  # past this the journal is not trusted and the cache KEEPS
+  #                                    # its last windows, rather than reading "no release coming"
 
 # Optional Telegram alerts on every engage/release — uncomment and set
 # TG_TOKEN/TG_CHAT in .env if you want them; omit the whole section otherwise.

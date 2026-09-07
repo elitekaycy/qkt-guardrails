@@ -7,9 +7,10 @@ import time
 from guardian import __version__
 from guardian.config import GuardianConfig
 from guardian.gateway import GatewayClient, GatewayError
+from guardian.hubjournal import HubJournalSource
 from guardian.ladder import evaluate
 from guardian.logging import log
-from guardian.news import ForexFactorySource, NewsCache
+from guardian.news import ForexFactorySource, NewsCache, Source
 from guardian.notify import TelegramNotifier
 from guardian.state import GuardianState
 
@@ -46,15 +47,35 @@ class Sight:
 
 
 def build_news_cache(cfg: GuardianConfig) -> NewsCache:
-    """One ForexFactory source today. A second provider is another entry in this list."""
-    sources = [
-        ForexFactorySource(
-            cfg.ladder.news_feed,
-            cfg.ladder.news_currency_codes,
-            include_holidays=cfg.ladder.news_include_holidays,
-            pad_seconds=cfg.ladder.news_pad_min * 60,
-        ),
-    ]
+    """The event-window providers for this account.
+
+    One source today, chosen by config: the ForexFactory feed over HTTP, or a qkt-data-hub
+    journal on disk. The hub path is preferred where one is running, because it removes the
+    brake's only outbound network call -- the observed failure of that feed was an HTML error
+    page served with a 200, which parses to zero events and empties the windows while the
+    system still looks healthy. A second provider is another entry in this list.
+    """
+    sources: list[Source] = []
+    if cfg.ladder.news_hub_root:
+        log(f"news: reading windows from the hub store at {cfg.ladder.news_hub_root} (no feed fetch)")
+        sources.append(
+            HubJournalSource(
+                cfg.ladder.news_hub_root,
+                cfg.ladder.news_currency_codes,
+                include_holidays=cfg.ladder.news_include_holidays,
+                pad_seconds=cfg.ladder.news_pad_min * 60,
+                stale_after_seconds=cfg.ladder.news_hub_stale_after_seconds,
+            )
+        )
+    else:
+        sources.append(
+            ForexFactorySource(
+                cfg.ladder.news_feed,
+                cfg.ladder.news_currency_codes,
+                include_holidays=cfg.ladder.news_include_holidays,
+                pad_seconds=cfg.ladder.news_pad_min * 60,
+            )
+        )
     return NewsCache(
         sources,
         timeout_seconds=cfg.ladder.news_timeout_seconds,

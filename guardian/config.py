@@ -161,6 +161,16 @@ class LadderConfig:
     # between success and failure).
     news_refresh_steady_seconds: int = 6 * 3600
     news_retry_seconds: int = 300
+    # Read event windows from a qkt-data-hub store on disk instead of fetching the feed.
+    # Empty (the default) keeps the historical HTTP source. Setting it removes the only
+    # outbound network call the brake makes: a hub already collecting that calendar on this
+    # host has the same records, and reading them needs nothing but the standard library.
+    # The store is the hub's to write; mount it read-only.
+    news_hub_root: str = ""
+    # How stale the hub's heartbeat may be before its journal stops being trusted. Past this
+    # the source reports failure, so the cache KEEPS its last known windows rather than
+    # concluding no release is coming -- losing a feed must never remove protection.
+    news_hub_stale_after_seconds: float = 900.0
 
     def __post_init__(self) -> None:
         if not (0 < self.soft_pct < self.hard_pct < self.static_pct):
@@ -310,6 +320,8 @@ class GuardianConfig:
             "news_timeout_seconds": float,
             "news_refresh_steady_seconds": int,
             "news_retry_seconds": int,
+            "news_hub_root": str,
+            "news_hub_stale_after_seconds": float,
         }
         # _typed_kwargs already validates each value against ladder_types/notify_types/
         # poll_types above at runtime; mypy can't correlate a dict[str, object] unpack
