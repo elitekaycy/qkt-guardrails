@@ -56,9 +56,22 @@ Rule of thumb: if you cannot show a log line proving a layer fired, that layer d
   false throughout). Cleaned up to flat. Unit side: 125 tests green, including that STATIC,
   DAILY-HARD and DAILY-SOFT inside the weekend window still return `want_kill` with
   `spare_symbols` empty — an equity rung can never be talked out of closing something.
+  Then the released v0.5.0 IMAGE itself, same account under the same lock, market open
+  (Friday 12:43 UTC), `fri_flat_utc: 6` to put the window live and `initial_balance` pinned to
+  the demo's equity so no equity rung could fire: opened BTCUSDm (3250433975) and XAUUSDm
+  (3250434120), ran the real container for 25s at `poll: 10`, and it logged
+  `WEEKEND-PARTIAL: closed 1 position(s) [XAUUSDM], sparing BTCUSDM`. XAUUSDm gone, BTCUSDm
+  still open, `kill_switch_active` false after, cleaned up to flat.
+  Rolled bot1 12:44 UTC (`v0.3.0` -> `v0.5.0`): `v0.5.0 up`, weekend window read as
+  `Fri20:00->Sun22:10UTC`, `weekend_exclude` loaded as `('BTCUSD',)` inside the running
+  container, state carried (`fri_flat: 2026-09-11`, `guard_kill: false`), container healthy,
+  kill switch untouched, and all three live positions (2x XAUUSD, 1x BTCUSD) left alone --
+  correct, the window does not open until 20:00 UTC.
   Not re-drilled (unchanged by this commit): SOFT/HARD/STATIC engage-release on the deployed
   image, manual-kill respect, BLIND — last proven 2026-09-04/06. Drill 1 (order round trip
-  through kill+flatten) still wants the Sunday 22:10 UTC open on bot1.
+  through kill+flatten) still wants the Sunday 22:10 UTC open on bot1. First live
+  WEEKEND-PARTIAL on the prop account is due 2026-09-18 20:00 UTC: expect the two XAUUSD legs
+  closed and the BTCUSD short left open.
 
 - 2026-09-06 — v0.3.0 image (`ghcr.io/elitekaycy/qkt-guardrails:v0.3.0`, the exact tag rolled),
   against the local demo gateway (botverify, Exness-MT5Trial9 436804390) under the shared-account
