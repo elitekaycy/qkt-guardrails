@@ -20,9 +20,15 @@ ladder:
   friday_flat: true
   fri_flat_utc: 20
   # Your venue's first tradable Sunday minute (UTC). The5ers reopens 22:10; Exness and
-  # IC Markets ~22:05. A 24/7 (crypto) book sets friday_flat: false on its OWN account --
-  # the kill switch is account-global and cannot spare some symbols.
+  # IC Markets ~22:05.
   weekend_release_utc: "22:10"
+  # Symbols that keep trading through the weekend. Naming any switches the rung to
+  # WEEKEND-PARTIAL: these are left open AND left tradeable (the account-global kill stays
+  # off), while every other position is closed. Leave it empty for a book that holds nothing
+  # tradeable at the weekend -- that keeps the original kill-everything behaviour.
+  # The equity rungs (STATIC/DAILY-HARD/DAILY-SOFT/NEWS) ignore this and still kill the
+  # whole account.
+  # weekend_exclude: "BTCUSD,ETHUSD"
   news_currencies: "USD,EUR"
   # news_include_holidays: false     # also open a window on a bank holiday for these currencies
   # news_timeout_seconds: 30         # feed fetch runs on a background thread, never the guard loop

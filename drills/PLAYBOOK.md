@@ -48,6 +48,18 @@ Rule of thumb: if you cannot show a log line proving a layer fired, that layer d
   a dead port after exactly 3 polls. Kill switch left released, venue untouched. Drill 1 (order
   round trip through kill+flatten) needs an open market: scheduled for the Sunday 22:10 UTC open
   on the deployed bot1 instance.
+- 2026-09-18 — WEEKEND-PARTIAL (`ladder.weekend_exclude`), against the local demo gateway
+  (botverify, Exness-MT5Trial9 436804390) under the shared-account lock, market open
+  (Friday 12:40 UTC). Opened two real positions, BTCUSDm (3250382665) and XAUUSDm
+  (3250382750), then ran `GatewayClient.flatten_except(("BTCUSDm",))`: it closed XAUUSDM
+  only, BTCUSDm stayed open, and the kill switch was never engaged (`kill_switch_active`
+  false throughout). Cleaned up to flat. Unit side: 125 tests green, including that STATIC,
+  DAILY-HARD and DAILY-SOFT inside the weekend window still return `want_kill` with
+  `spare_symbols` empty — an equity rung can never be talked out of closing something.
+  Not re-drilled (unchanged by this commit): SOFT/HARD/STATIC engage-release on the deployed
+  image, manual-kill respect, BLIND — last proven 2026-09-04/06. Drill 1 (order round trip
+  through kill+flatten) still wants the Sunday 22:10 UTC open on bot1.
+
 - 2026-09-06 — v0.3.0 image (`ghcr.io/elitekaycy/qkt-guardrails:v0.3.0`, the exact tag rolled),
   against the local demo gateway (botverify, Exness-MT5Trial9 436804390) under the shared-account
   lock, market closed (Sunday 10:34 UTC), no positions open, with bot1's live config verbatim

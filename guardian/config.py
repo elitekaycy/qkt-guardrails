@@ -141,10 +141,22 @@ class LadderConfig:
     news_currencies: str = "USD,EUR"
     fri_flat_utc: int = 20
     # The WEEKEND rung is a market-calendar rule for instruments that CLOSE over the weekend
-    # (FX, metals, indices). The kill switch is account-global, so a book that trades 24/7
-    # instruments (crypto) must run on its own account with friday_flat: false and rely on the
-    # engine's per-symbol session calendar instead -- there is no per-symbol weekend flatten.
+    # (FX, metals, indices).
     friday_flat: bool = True
+    # Symbols that keep trading through the weekend (crypto). Comma-separated, matched
+    # case-insensitively against the venue's symbol names.
+    #
+    # Empty (the default) keeps the historical rung: one account-global kill switch plus a
+    # flatten of everything, which is right for a book holding nothing tradeable at the weekend.
+    #
+    # Non-empty switches the rung to WEEKEND-PARTIAL: the listed symbols are LEFT ALONE -- not
+    # closed, and the kill switch is NOT engaged, so they keep trading -- while every other open
+    # position is closed. That trade is deliberate and narrow: the weekend rung guards against
+    # gap risk in markets that shut, not against drawdown, so it is the one rung where "flatten
+    # what is closing, leave the rest running" is the correct semantic. The rungs that DO guard
+    # equity -- STATIC, DAILY-HARD, DAILY-SOFT, NEWS -- sit above this one in the ladder and
+    # still engage the account-global kill, exclusions or not.
+    weekend_exclude: str = ""
     # When the weekend window ends (Sunday, HH:MM UTC). Brokers reopen at different times:
     # Exness/IC Markets ~22:05, The5ers 22:10; set it to your venue's first tradable minute.
     weekend_release_utc: str = "22:10"
@@ -197,6 +209,10 @@ class LadderConfig:
     @property
     def weekend_release(self) -> tuple[int, int]:
         return parse_hhmm(self.weekend_release_utc, "ladder.weekend_release_utc")
+
+    @property
+    def weekend_exclude_symbols(self) -> tuple[str, ...]:
+        return tuple(s.strip().upper() for s in self.weekend_exclude.split(",") if s.strip())
 
 
 @dataclass(frozen=True)
@@ -315,6 +331,7 @@ class GuardianConfig:
             "news_currencies": str,
             "fri_flat_utc": int,
             "friday_flat": bool,
+            "weekend_exclude": str,
             "weekend_release_utc": str,
             "news_include_holidays": bool,
             "news_timeout_seconds": float,
