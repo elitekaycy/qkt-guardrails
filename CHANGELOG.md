@@ -3,6 +3,21 @@
 All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each tag publishes
 `ghcr.io/elitekaycy/qkt-guardrails:vX.Y.Z` and a GitHub Release.
 
+## Unreleased
+
+### Added
+
+- `ladder.weekend_exclude`: symbols that keep trading through the weekend. Naming any
+  switches the WEEKEND rung to WEEKEND-PARTIAL, which closes every other open position
+  but leaves those alone and does NOT engage the account-global kill switch, so a 24/7
+  instrument keeps trading. Empty (the default) is the previous behaviour exactly.
+  The flatten re-runs every poll instead of once on Friday, because without the switch
+  there is nothing else stopping a weekday position from reappearing mid-weekend.
+  Equity rungs (STATIC, DAILY-HARD, DAILY-SOFT, NEWS) ignore exclusions and still kill
+  the whole account.
+- `GatewayClient.positions()`, `.close_position()` and `.flatten_except()` implement the
+  selective flatten from existing gateway endpoints; no gateway change was required.
+
 ## v0.4.0 — 2026-09-07
 
 ### Added
