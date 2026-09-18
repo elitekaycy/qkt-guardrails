@@ -3,7 +3,7 @@
 All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each tag publishes
 `ghcr.io/elitekaycy/qkt-guardrails:vX.Y.Z` and a GitHub Release.
 
-## Unreleased
+## v0.5.0 — 2026-09-18
 
 ### Added
 
