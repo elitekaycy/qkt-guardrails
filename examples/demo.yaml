@@ -1,0 +1,15 @@
+# The demo account: the guardian watching examples/fake-gateway.py.
+# The ladder is not here; the quick start appends it.
+target:
+  name: demo
+  gateway_url: http://127.0.0.1:5811
+  api_key: demo-token
+
+account:
+  initial_balance: 50000
+
+poll:
+  interval_seconds: 1
+
+state:
+  path: configs/demo-state.json

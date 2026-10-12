@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="qkt-guardrails">
+  <title>qkt-guardrails</title>
+  <rect width="200" height="200" rx="44" fill="#0d1117"/>
+  <g fill="none" stroke-width="14">
+    <g stroke="#a78bfa" stroke-linejoin="miter">
+      <path d="M56 50H34v100h22"/>
+      <path d="M143 50h22v100h-22"/>
+    </g>
+    <g stroke="#e5e7eb" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M78 62v76M122 62v76"/>
+      <path d="M78 88h44M78 114h44"/>
+    </g>
+  </g>
+</svg>
