@@ -7,8 +7,7 @@
       <path d="M143 50h22v100h-22"/>
     </g>
     <g stroke="#e5e7eb" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M78 62v76M122 62v76"/>
-      <path d="M78 88h44M78 114h44"/>
+      <path d="M100 58L130 70V100C130 120 116 134 100 142C84 134 70 120 70 100V70Z"/>
     </g>
   </g>
 </svg>
