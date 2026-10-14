@@ -6,8 +6,7 @@
       <path d="M143 50h22v100h-22"/>
     </g>
     <g stroke="#e5e7eb" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M100 80v70"/>
+      <path d="M100 50L127 60V100C127 124 114 140 100 150C86 140 73 124 73 100V60Z"/>
     </g>
   </g>
-  <circle cx="100" cy="62" r="7" fill="#e5e7eb"/>
 </svg>
