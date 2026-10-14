@@ -1,21 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="qkt-guardrails">
   <title>qkt-guardrails</title>
   <style>
-    .letter { stroke: #0d1117; }
-    .tittle { fill: #0d1117; }
+    .bracket { stroke: #7c3aed; }
+    .letter  { stroke: #0d1117; }
     @media (prefers-color-scheme: dark) {
-      .letter { stroke: #e5e7eb; }
-      .tittle { fill: #e5e7eb; }
+      .bracket { stroke: #a78bfa; }
+      .letter  { stroke: #e5e7eb; }
     }
   </style>
   <g fill="none" stroke-width="14">
-    <g stroke="#a78bfa" stroke-linejoin="miter">
+    <g class="bracket" stroke-linejoin="miter">
       <path d="M56 50H34v100h22"/>
       <path d="M143 50h22v100h-22"/>
     </g>
     <g class="letter" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M100 80v70"/>
+      <path d="M100 50L127 60V100C127 124 114 140 100 150C86 140 73 124 73 100V60Z"/>
     </g>
   </g>
-  <circle class="tittle" cx="100" cy="62" r="7"/>
 </svg>
