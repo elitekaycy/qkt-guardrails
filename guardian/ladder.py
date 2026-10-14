@@ -25,6 +25,10 @@ class Decision:
     want_flat: bool
     reason: str | None
     day_dd_pct: float
+    # Symbols the caller must leave untouched when it acts on this decision. Only ever
+    # populated on WEEKEND-PARTIAL; every equity rung returns it empty so a drawdown kill
+    # can never be talked out of closing something.
+    spare_symbols: tuple[str, ...] = ()
 
 
 def day_anchor(now: dt.datetime, roll_utc_hour: int) -> str:
@@ -43,8 +47,9 @@ def is_friday_flat_window(
     """From Friday `fri_flat_utc`:00 UTC through Sunday `release_utc` (HH, MM) UTC.
 
     A market-calendar window for instruments that close over the weekend. It is
-    evaluated only when the book opted in (`ladder.friday_flat`); a 24/7 book
-    (crypto) has no weekend and must not run with it on.
+    evaluated only when the book opted in (`ladder.friday_flat`). A book that also
+    holds 24/7 instruments names them in `ladder.weekend_exclude`, which spares them
+    inside this window rather than turning the whole rung off.
     """
     if now.weekday() == 4:
         return now.hour >= fri_flat_utc
@@ -120,12 +125,28 @@ def evaluate(
     elif day_dd_pct >= cfg.soft_pct:
         want_kill, reason = True, "DAILY-SOFT"
     elif cfg.friday_flat and is_friday_flat_window(now, cfg.fri_flat_utc, cfg.weekend_release):
-        want_kill, reason = True, "WEEKEND"
-        anchor = day_anchor(now, cfg.roll_utc_hour)
-        if now.weekday() == 4 and state.fri_flat != anchor:
+        spare = cfg.weekend_exclude_symbols
+        if spare:
+            # Weekend-tradeable symbols are left alone, so the account-global kill switch
+            # stays OFF -- engaging it would stop them trading, which is the whole point of
+            # naming them. Losing the switch here also means losing its guarantee that no
+            # weekday position can reappear, so this flatten re-runs every poll instead of
+            # once on Friday; closing an empty set is a no-op.
+            reason = "WEEKEND-PARTIAL"
             want_flat = True
-            state.fri_flat = anchor
+        else:
+            want_kill, reason = True, "WEEKEND"
+            anchor = day_anchor(now, cfg.roll_utc_hour)
+            if now.weekday() == 4 and state.fri_flat != anchor:
+                want_flat = True
+                state.fri_flat = anchor
     elif is_in_news_window(now, news_windows):
         want_kill, reason = True, "NEWS"
 
-    return state, Decision(want_kill=want_kill, want_flat=want_flat, reason=reason, day_dd_pct=day_dd_pct)
+    return state, Decision(
+        want_kill=want_kill,
+        want_flat=want_flat,
+        reason=reason,
+        day_dd_pct=day_dd_pct,
+        spare_symbols=cfg.weekend_exclude_symbols if reason == "WEEKEND-PARTIAL" else (),
+    )

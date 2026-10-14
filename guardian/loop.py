@@ -168,6 +168,24 @@ def run_once(
         gateway.kill(flatten=True)
         state.guard_kill = True
         log(f"[{cfg.target.name}] flatten re-issued ({decision.reason})")
+    elif decision.want_flat and decision.spare_symbols:
+        # WEEKEND-PARTIAL: close what the weekend shuts, leave the 24/7 symbols trading.
+        # The account-global switch is deliberately NOT engaged here, so release one the
+        # guardian is still holding from an earlier rung first -- otherwise the position
+        # endpoints this needs are kill-gated and every close would 423.
+        if kill_switch_active and state.guard_kill:
+            gateway.release()
+            state.guard_kill = False
+            log(f"[{cfg.target.name}] kill released for {decision.reason}")
+        if not gateway.kill_switch_active():
+            closed = gateway.flatten_except(decision.spare_symbols)
+            if closed:
+                msg = (
+                    f"{decision.reason}: closed {len(closed)} position(s) "
+                    f"[{', '.join(sorted(set(closed)))}], sparing {', '.join(decision.spare_symbols)}"
+                )
+                log(f"[{cfg.target.name}]", msg)
+                notifier.send(f"{cfg.target.name}: {msg}")
     elif not decision.want_kill and kill_switch_active:
         # Only release a switch the guardian itself engaged — a manual
         # operator kill stays engaged until the operator releases it.
