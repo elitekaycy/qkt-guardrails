@@ -88,3 +88,20 @@ Rule of thumb: if you cannot show a log line proving a layer fired, that layer d
   except NEWS window shape): SOFT/HARD/STATIC/manual-kill/BLIND — last proven 2026-09-04. Drill 1
   (order round trip) still needs an open market: Sunday 22:10 UTC open on bot1.
 
+- 2026-10-22 — v0.6.0 image (`ghcr.io/elitekaycy/qkt-guardrails:v0.6.0`, the exact tag rolled), against the
+  local demo gateway (botverify, Exness-MT5Trial9 436804390) under the shared-account lock, market open
+  (Thursday 15:57-16:14 UTC), no orders placed, with bot1's live config verbatim except gateway URL,
+  `initial_balance` pinned to the demo's equity (no rung can fire), `notify` removed and `poll: 10`:
+  (1) the live file unchanged (`roll_utc_hour: 21`) loads and runs on v0.6.0, `v0.6.0 up ... roll=21UTC`,
+  fresh state anchored `day: 2026-10-21`; (2) the same state with the roll switched to `roll_tz:
+  America/New_York` + `roll_local_hour: 17`: `roll=17America/New_York`, `day` and `prev_close` unchanged
+  (the switch does not roll the day); (3) state seeded one day back with a daily lock (`day: 2026-10-20`,
+  `lock: daily`, `equity_now: 99000`): rolled to `2026-10-21`, `prev_close` 99000 (the old day's last
+  equity), lock cleared, no kill. Kill switch false throughout. The winter boundary (22:00 UTC) is proven in
+  `tests/test_ladder.py` (DayAnchorInZoneTest, the zoned HARD-lock release). News: 0 windows this week is
+  real (the feed lists no high-impact USD/EUR release for 2026-10-18..24). Harness note: `timeout docker run`
+  forwards SIGTERM, which the guardian does not exit on; run detached and `docker stop` it, as production does.
+  Rolled bot1 16:15 UTC (`v0.5.0` -> `v0.6.0`, config `roll_utc_hour: 21` -> `America/New_York` 17):
+  `v0.6.0 up ... roll=17America/New_York`, state carried (`day: 2026-10-21`, `prev_close` unchanged,
+  `guard_kill: false`), container healthy, kill switch untouched. Not re-drilled (unchanged):
+  SOFT/HARD/STATIC engage, manual-kill respect, BLIND, WEEKEND-PARTIAL.
