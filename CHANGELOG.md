@@ -5,6 +5,8 @@ All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each ta
 
 ## v0.6.0 — 2026-10-22
 
+Deployed to the bot1 prop account 2026-10-22 16:15 UTC (`America/New_York` 17), drilled first (PLAYBOOK).
+
 ### Added
 
 - `ladder.roll_tz` + `ladder.roll_local_hour`: the firm's day roll as a wall-clock hour in a
