@@ -16,7 +16,9 @@ ladder:
   soft_pct: 2.5
   hard_pct: 3.5
   static_pct: 6
-  roll_utc_hour: 22
+  # FTMO's day rolls at midnight Prague time (22:00 UTC in summer, 23:00 UTC in winter).
+  roll_tz: Europe/Prague
+  roll_local_hour: 0
   friday_flat: true
   fri_flat_utc: 20
   # Your venue's first tradable Sunday minute (UTC). The5ers reopens 22:10; Exness and

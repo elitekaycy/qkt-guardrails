@@ -134,6 +134,26 @@ class LadderCalendarTest(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ConfigError):
                 self._load(f"ladder:\n  weekend_release_utc: \"{bad}\"\n")
 
+    def test_roll_defaults_to_21_utc(self) -> None:
+        ladder = self._load("").ladder
+        self.assertEqual((ladder.roll_hour, ladder.roll_label), (21, "21UTC"))
+
+    def test_roll_in_a_timezone(self) -> None:
+        ladder = self._load("ladder:\n  roll_tz: America/New_York\n  roll_local_hour: 17\n").ladder
+        self.assertEqual((ladder.roll_hour, ladder.roll_label), (17, "17America/New_York"))
+        self.assertEqual(str(ladder.roll_zone), "America/New_York")
+
+    def test_roll_timezone_rejects_what_it_cannot_apply(self) -> None:
+        for bad in (
+            "ladder:\n  roll_tz: America/New_York\n",  # no hour
+            "ladder:\n  roll_local_hour: 17\n",  # no zone
+            "ladder:\n  roll_tz: Mars/Olympus\n  roll_local_hour: 17\n",
+            "ladder:\n  roll_tz: America/New_York\n  roll_local_hour: 24\n",
+            "ladder:\n  roll_utc_hour: 21\n  roll_tz: America/New_York\n  roll_local_hour: 17\n",
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ConfigError):
+                self._load(bad)
+
     def test_news_currencies_default_and_override(self) -> None:
         self.assertEqual(self._load("").ladder.news_currency_codes, ("USD", "EUR"))
         cfg = self._load("ladder:\n  news_currencies: \"usd, gbp\"\n")

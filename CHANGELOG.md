@@ -3,6 +3,23 @@
 All notable changes to qkt-guardrails. Versions are git tags (`vX.Y.Z`); each tag publishes
 `ghcr.io/elitekaycy/qkt-guardrails:vX.Y.Z` and a GitHub Release.
 
+## v0.6.0 — 2026-10-22
+
+### Added
+
+- `ladder.roll_tz` + `ladder.roll_local_hour`: the firm's day roll as a wall-clock hour in a
+  timezone, for prop firms whose server day follows daylight saving. The5ers' midnight is 17:00
+  America/New_York all year -- 21:00 UTC in US summer, 22:00 UTC in winter -- so a fixed
+  `roll_utc_hour: 21` started the day an hour early from November to March: SOFT/HARD measured
+  from an equity taken an hour before the firm's, and a HARD lock cleared an hour before the
+  firm's day ended. Set both or neither; `roll_utc_hour` (unchanged default 21) still works and
+  may not be combined with them. The day keeps its name (the date it began on in that zone), so
+  switching a summer 21:00 UTC roll to 17:00 New York does not roll the day on restart. An
+  unknown zone fails the config load.
+- The5ers presets use `America/New_York` 17; the FTMO preset uses `Europe/Prague` 0.
+
+No threshold, rung or default changed.
+
 ## v0.5.0 — 2026-09-18
 
 ### Added
