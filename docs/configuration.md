@@ -17,7 +17,9 @@ ladder:
   soft_pct: 2.5
   hard_pct: 3.5
   static_pct: 6
-  roll_utc_hour: 21
+  roll_utc_hour: 21              # the firm's day roll, UTC hour; or, for a server day that
+  # roll_tz: America/New_York    # follows daylight saving, a wall-clock hour in a timezone
+  # roll_local_hour: 17          # (set both, and leave roll_utc_hour out)
   friday_flat: true              # false for a 24/7 (crypto) book, see ladder.md
   fri_flat_utc: 20
   weekend_release_utc: "22:10"   # your venue's first tradable Sunday minute

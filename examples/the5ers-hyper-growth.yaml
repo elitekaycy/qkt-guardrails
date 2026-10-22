@@ -16,7 +16,10 @@ ladder:
   soft_pct: 1.5
   hard_pct: 2.2
   static_pct: 4
-  roll_utc_hour: 21
+  # The5ers' day rolls at server midnight, 17:00 New York all year (21:00 UTC in US summer,
+  # 22:00 UTC in winter); a fixed roll_utc_hour would be an hour early half the year.
+  roll_tz: America/New_York
+  roll_local_hour: 17
   friday_flat: true
   fri_flat_utc: 20
   # Your venue's first tradable Sunday minute (UTC). The5ers reopens 22:10; Exness and

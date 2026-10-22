@@ -1,5 +1,6 @@
 import datetime as dt
 import unittest
+from zoneinfo import ZoneInfo
 
 from guardian.config import LadderConfig
 from guardian.ladder import Decision, day_anchor, evaluate, is_friday_flat_window, is_in_news_window
@@ -14,10 +15,35 @@ def at(iso: str) -> dt.datetime:
 
 class DayAnchorTest(unittest.TestCase):
     def test_before_roll_hour_belongs_to_previous_day(self) -> None:
-        self.assertEqual(day_anchor(at("2026-06-01T20:00:00"), roll_utc_hour=21), "2026-05-31")
+        self.assertEqual(day_anchor(at("2026-06-01T20:00:00"), roll_hour=21), "2026-05-31")
 
     def test_at_or_after_roll_hour_belongs_to_current_day(self) -> None:
-        self.assertEqual(day_anchor(at("2026-06-01T21:00:00"), roll_utc_hour=21), "2026-06-01")
+        self.assertEqual(day_anchor(at("2026-06-01T21:00:00"), roll_hour=21), "2026-06-01")
+
+
+class DayAnchorInZoneTest(unittest.TestCase):
+    """A server day pinned to New York's 17:00 close: 21:00 UTC in US summer, 22:00 UTC in winter."""
+
+    NY = ZoneInfo("America/New_York")
+
+    def test_summer_rolls_at_21_utc_with_the_same_names_as_a_utc_roll(self) -> None:
+        for iso in ("2026-10-22T20:59:00", "2026-10-22T21:00:00", "2026-10-23T03:00:00"):
+            with self.subTest(at=iso):
+                self.assertEqual(day_anchor(at(iso), 17, self.NY), day_anchor(at(iso), 21))
+        self.assertEqual(day_anchor(at("2026-10-22T20:59:00"), 17, self.NY), "2026-10-21")
+        self.assertEqual(day_anchor(at("2026-10-22T21:00:00"), 17, self.NY), "2026-10-22")
+
+    def test_winter_rolls_at_22_utc_where_a_fixed_21_utc_roll_is_an_hour_early(self) -> None:
+        # 2026-11-02 21:30 UTC is 16:30 in New York: still the day that began on the 1st.
+        self.assertEqual(day_anchor(at("2026-11-02T21:30:00"), 17, self.NY), "2026-11-01")
+        self.assertEqual(day_anchor(at("2026-11-02T21:30:00"), 21), "2026-11-02")
+        self.assertEqual(day_anchor(at("2026-11-02T22:00:00"), 17, self.NY), "2026-11-02")
+
+    def test_the_dst_switch_weekend_rolls_once_per_day(self) -> None:
+        # US DST ends 2026-11-01 02:00 local: Friday's day rolls at 21:00 UTC, Monday's at 22:00 UTC.
+        self.assertEqual(day_anchor(at("2026-10-30T21:00:00"), 17, self.NY), "2026-10-30")
+        self.assertEqual(day_anchor(at("2026-11-02T21:59:00"), 17, self.NY), "2026-11-01")
+        self.assertEqual(day_anchor(at("2026-11-02T22:00:00"), 17, self.NY), "2026-11-02")
 
 
 class FridayWindowTest(unittest.TestCase):
@@ -138,6 +164,17 @@ class EvaluateTest(unittest.TestCase):
         self.assertFalse(decision.want_kill)
         self.assertFalse(new_state.daily_lock)
         self.assertIsNone(new_state.lock)
+
+    def test_daily_hard_lock_clears_at_the_zoned_roll_not_the_fixed_utc_hour(self) -> None:
+        cfg = LadderConfig(soft_pct=2.5, hard_pct=3.5, static_pct=6.0, roll_tz="America/New_York", roll_local_hour=17)
+        state = GuardianState(day="2026-11-01", prev_close=10_000.0, daily_lock=True, lock="daily", equity_now=9_600.0)
+        held, decision = evaluate(state, cfg, 10_000.0, at("2026-11-02T21:30:00"), 9_600.0, None)
+        self.assertEqual(decision.reason, "DAILY-HARD")  # 16:30 in New York: the same server day
+        self.assertEqual(held.lock, "daily")
+        rolled, decision2 = evaluate(held, cfg, 10_000.0, at("2026-11-02T22:00:00"), 9_900.0, None)
+        self.assertFalse(decision2.want_kill)
+        self.assertIsNone(rolled.lock)
+        self.assertEqual(rolled.day, "2026-11-02")
 
     def test_static_floor_locks_and_survives_day_rollover(self) -> None:
         state = GuardianState(day="2026-06-01", prev_close=10_000.0)

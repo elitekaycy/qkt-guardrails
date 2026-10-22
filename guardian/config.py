@@ -6,10 +6,12 @@ in the config file itself.
 """
 from __future__ import annotations
 
+import datetime as dt
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from guardian.simpleyaml import SimpleYamlError, parse
 
@@ -135,6 +137,12 @@ class LadderConfig:
     hard_pct: float = 3.5
     static_pct: float = 6.0
     roll_utc_hour: int = 21
+    # The firm's day roll as a wall-clock hour in a timezone, for a server day that follows
+    # daylight saving: The5ers' midnight is 17:00 America/New_York all year, which is 21:00 UTC
+    # in US summer and 22:00 UTC in winter -- a fixed `roll_utc_hour` is an hour early half the
+    # year. Set both or neither; when set, `roll_utc_hour` must be left out.
+    roll_tz: str = ""
+    roll_local_hour: int | None = None
     news_pad_min: int = 5
     news_feed: str = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
     # Comma-separated ForexFactory country codes whose high-impact events open a NEWS window.
@@ -189,6 +197,18 @@ class LadderConfig:
             raise ConfigError("ladder thresholds must satisfy 0 < soft_pct < hard_pct < static_pct")
         if not (0 <= self.roll_utc_hour < 24):
             raise ConfigError("ladder.roll_utc_hour must be in [0, 24)")
+        if bool(self.roll_tz) != (self.roll_local_hour is not None):
+            raise ConfigError("ladder.roll_tz and ladder.roll_local_hour must be set together")
+        if self.roll_local_hour is not None and not (0 <= self.roll_local_hour < 24):
+            raise ConfigError("ladder.roll_local_hour must be in [0, 24)")
+        if self.roll_tz:
+            try:
+                ZoneInfo(self.roll_tz)
+            except (ZoneInfoNotFoundError, ValueError) as e:
+                raise ConfigError(
+                    f"ladder.roll_tz {self.roll_tz!r} is not a timezone this host knows "
+                    "(an IANA name such as America/New_York; the image needs tzdata)"
+                ) from e
         if not (0 <= self.fri_flat_utc < 24):
             raise ConfigError("ladder.fri_flat_utc must be in [0, 24)")
         if self.news_pad_min < 0:
@@ -201,6 +221,21 @@ class LadderConfig:
         for name in ("news_refresh_steady_seconds", "news_retry_seconds"):
             if getattr(self, name) <= 0:
                 raise ConfigError(f"ladder.{name} must be positive")
+
+    @property
+    def roll_zone(self) -> dt.tzinfo:
+        """The timezone the day roll is read in: `roll_tz`, else UTC."""
+        return ZoneInfo(self.roll_tz) if self.roll_tz else dt.UTC
+
+    @property
+    def roll_hour(self) -> int:
+        """The hour the firm's day rolls over, in `roll_zone`."""
+        return self.roll_local_hour if self.roll_local_hour is not None else self.roll_utc_hour
+
+    @property
+    def roll_label(self) -> str:
+        """The roll as the startup line prints it, e.g. "21UTC" or "17America/New_York"."""
+        return f"{self.roll_hour}{self.roll_tz or 'UTC'}"
 
     @property
     def news_currency_codes(self) -> tuple[str, ...]:
@@ -326,6 +361,8 @@ class GuardianConfig:
             "hard_pct": float,
             "static_pct": float,
             "roll_utc_hour": int,
+            "roll_tz": str,
+            "roll_local_hour": int,
             "news_pad_min": int,
             "news_feed": str,
             "news_currencies": str,
@@ -344,6 +381,8 @@ class GuardianConfig:
         # poll_types above at runtime; mypy can't correlate a dict[str, object] unpack
         # to a dataclass's per-field types, so these three are a deliberate, narrowly
         # scoped exception to the strict-typing rule, not a suppressed real bug.
+        if "roll_tz" in ladder_raw and "roll_utc_hour" in ladder_raw:
+            raise ConfigError("ladder: set roll_utc_hour, or roll_tz with roll_local_hour, not both")
         ladder = LadderConfig(**_typed_kwargs(ladder_raw, ladder_types, "ladder"))  # type: ignore[arg-type]
 
         notify_raw = _section(doc, "notify", required=False)

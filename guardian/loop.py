@@ -100,7 +100,7 @@ def run_forever(cfg: GuardianConfig) -> None:
     log(
         f"guardian[{cfg.target.name}] v{__version__} up: initial={cfg.account.initial_balance} "
         f"soft={cfg.ladder.soft_pct}% hard={cfg.ladder.hard_pct}% static={cfg.ladder.static_pct}% "
-        f"roll={cfg.ladder.roll_utc_hour}UTC pad={cfg.ladder.news_pad_min}m "
+        f"roll={cfg.ladder.roll_label} pad={cfg.ladder.news_pad_min}m "
         f"news={','.join(cfg.ladder.news_currency_codes)}{holidays} {weekend} "
         f"poll={cfg.poll.interval_seconds}s timeout={cfg.poll.gateway_timeout:g}s "
         f"blind_after={cfg.poll.blind_after_failures}"

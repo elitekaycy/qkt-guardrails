@@ -31,10 +31,13 @@ class Decision:
     spare_symbols: tuple[str, ...] = ()
 
 
-def day_anchor(now: dt.datetime, roll_utc_hour: int) -> str:
-    """The firm's trading day: rolls over at `roll_utc_hour` UTC."""
-    d = now.date()
-    if now.hour < roll_utc_hour:
+def day_anchor(now: dt.datetime, roll_hour: int, zone: dt.tzinfo = dt.UTC) -> str:
+    """The firm's trading day: rolls over at `roll_hour` o'clock in `zone`, named by the date
+    the day began on there. e.g. a 17:00 America/New_York roll names 2026-10-22 21:30 UTC
+    (17:30 in New York) "2026-10-22", the same as a 21:00 UTC roll does in US summer."""
+    local = now.astimezone(zone)
+    d = local.date()
+    if local.hour < roll_hour:
         d -= dt.timedelta(days=1)
     return d.isoformat()
 
@@ -73,7 +76,7 @@ def is_in_news_window(now: dt.datetime, news_windows: Iterable[Window] | None) -
 
 def roll_day(state: GuardianState, now: dt.datetime, cfg: LadderConfig, equity: float) -> GuardianState:
     """Returns `state` unchanged, or a new state with the day's anchor rolled forward."""
-    anchor = day_anchor(now, cfg.roll_utc_hour)
+    anchor = day_anchor(now, cfg.roll_hour, cfg.roll_zone)
     if state.day == anchor:
         return state
     prev = state.equity_now if state.equity_now is not None else equity
@@ -136,7 +139,7 @@ def evaluate(
             want_flat = True
         else:
             want_kill, reason = True, "WEEKEND"
-            anchor = day_anchor(now, cfg.roll_utc_hour)
+            anchor = day_anchor(now, cfg.roll_hour, cfg.roll_zone)
             if now.weekday() == 4 and state.fri_flat != anchor:
                 want_flat = True
                 state.fri_flat = anchor
